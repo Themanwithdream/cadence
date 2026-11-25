@@ -1,0 +1,109 @@
+/**
+ * Cadence — "Warm Acoustic Studio" Design Tokens
+ * Sunlit editorial alabaster paper paired with a deep charcoal studio stage
+ * and restrained analog broadcast accents.
+ */
+
+:root {
+  /* Palette — Surfaces */
+  --bg-canvas: #f6f3ec;
+  --bg-surface: #fdfbf7;
+  --bg-muted: #ede8dc;
+  --bg-elevated: #ffffff;
+  --bg-stage: #1a1917;
+  --bg-stage-panel: rgba(26, 25, 23, 0.78);
+  --bg-stage-glass: rgba(26, 25, 23, 0.62);
+  --bg-scrim: rgba(28, 26, 23, 0.42);
+
+  /* Palette — Ink */
+  --ink-primary: #1c1a17;
+  --ink-secondary: #5e584f;
+  --ink-muted: #8e867b;
+  --ink-on-stage: #f6f3ec;
+  --ink-on-stage-muted: rgba(246, 243, 236, 0.72);
+  --ink-on-accent: #fdfbf7;
+
+  /* Palette — Borders */
+  --border-subtle: #e5dfd3;
+  --border-strong: #d3cab8;
+  --border-on-stage: rgba(246, 243, 236, 0.16);
+
+  /* Palette — Studio Accents */
+  --accent-terracotta: #c8553d;
+  --accent-terracotta-hover: #b24630;
+  --accent-terracotta-soft: rgba(200, 85, 61, 0.12);
+  --accent-terracotta-ring: rgba(200, 85, 61, 0.32);
+
+  --accent-sage: #3f6a58;
+  --accent-sage-bright: #5e9b82;
+  --accent-sage-soft: rgba(63, 106, 88, 0.13);
+  --accent-sage-ring: rgba(63, 106, 88, 0.3);
+
+  --accent-amber: #b87d2a;
+  --accent-amber-bright: #d9a04a;
+  --accent-amber-soft: rgba(184, 125, 42, 0.13);
+  --accent-amber-border: rgba(184, 125, 42, 0.36);
+
+  --accent-clay: #b85d3b;
+  --accent-clay-soft: rgba(184, 93, 59, 0.14);
+
+  /* Typography — Families */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Typography — Scale */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.375rem;     /* 22px */
+  --text-2xl: 1.75rem;     /* 28px */
+  --text-3xl: 2.25rem;     /* 36px */
+  --text-hero: clamp(2rem, 3.5vw, 2.75rem);
+
+  /* Spacing & Layout */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --container-max: 1120px;
+  --topbar-height: 56px;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Elevation — Ultra-soft warm paper shadows */
+  --shadow-xs: 0 1px 2px rgba(28, 26, 23, 0.04);
+  --shadow-sm: 0 4px 14px rgba(28, 26, 23, 0.045);
+  --shadow-md: 0 8px 30px rgba(28, 26, 23, 0.06);
+  --shadow-lg: 0 18px 48px rgba(28, 26, 23, 0.12);
+  --shadow-stage: 0 20px 56px rgba(26, 25, 23, 0.18);
+
+  /* Motion */
+  --ease-studio: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-breath: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 420ms;
+
+  /* Layering */
+  --z-base: 1;
+  --z-sticky: 20;
+  --z-topbar: 40;
+  --z-drawer-backdrop: 80;
+  --z-drawer: 90;
+  --z-modal: 100;
+}

@@ -1,0 +1,241 @@
+.beacon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 11px;
+  border-radius: var(--radius-pill);
+  background: rgba(26, 25, 23, 0.78);
+  border: 1px solid rgba(246, 243, 236, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: var(--ink-on-stage);
+  user-select: none;
+  transition:
+    border-color var(--duration-slow) var(--ease-studio),
+    box-shadow var(--duration-slow) var(--ease-studio),
+    background-color var(--duration-slow) var(--ease-studio),
+    transform var(--duration-base) var(--ease-studio);
+}
+
+.lensReticle {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.haloOuter,
+.haloInner,
+.coreDot {
+  position: absolute;
+  border-radius: 50%;
+  transition:
+    background-color var(--duration-slow) var(--ease-studio),
+    border-color var(--duration-slow) var(--ease-studio),
+    box-shadow var(--duration-slow) var(--ease-studio),
+    transform var(--duration-slow) var(--ease-studio);
+}
+
+.haloOuter {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(246, 243, 236, 0.22);
+  opacity: 0.6;
+}
+
+.haloInner {
+  width: 12px;
+  height: 12px;
+  background: rgba(246, 243, 236, 0.14);
+}
+
+.coreDot {
+  width: 7px;
+  height: 7px;
+  background: var(--bg-canvas);
+  box-shadow: 0 0 8px rgba(246, 243, 236, 0.55);
+}
+
+.anchorText {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(246, 243, 236, 0.9);
+  white-space: nowrap;
+}
+
+.divider {
+  width: 1px;
+  height: 11px;
+  background: rgba(246, 243, 236, 0.2);
+  flex-shrink: 0;
+}
+
+.whisperBadge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(246, 243, 236, 0.68);
+  white-space: nowrap;
+  transition:
+    color var(--duration-base) var(--ease-studio),
+    background-color var(--duration-base) var(--ease-studio),
+    padding var(--duration-base) var(--ease-studio);
+}
+
+.whisperBadgeBloom {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(94, 155, 130, 0.24);
+  color: #bce3d2;
+}
+
+/* State: Prep — calm breathing warm ivory */
+.statePrep .haloOuter {
+  animation: ivoryBreath 3.8s var(--ease-breath) infinite;
+}
+
+.statePrep .coreDot {
+  background: #f6f3ec;
+}
+
+/* State: Countdown — centered amber inhale ring */
+.stateCountdown {
+  border-color: rgba(217, 160, 74, 0.42);
+}
+
+.stateCountdown .haloOuter {
+  border-color: rgba(217, 160, 74, 0.55);
+  animation: countdownPulse 1s var(--ease-breath) infinite;
+}
+
+.stateCountdown .haloInner {
+  background: rgba(217, 160, 74, 0.24);
+}
+
+.stateCountdown .coreDot {
+  background: var(--accent-amber-bright);
+  box-shadow: 0 0 10px rgba(217, 160, 74, 0.75);
+}
+
+.stateCountdown .whisperBadge {
+  color: #f0cf99;
+}
+
+/* State: Live — analog terracotta "On Air" pilot pulse */
+.stateLive {
+  border-color: rgba(200, 85, 61, 0.45);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(200, 85, 61, 0.16),
+    0 0 22px rgba(200, 85, 61, 0.16);
+}
+
+.stateLive .haloOuter {
+  border-color: rgba(200, 85, 61, 0.55);
+  animation: onAirPulse 2.4s var(--ease-breath) infinite;
+}
+
+.stateLive .haloInner {
+  background: rgba(200, 85, 61, 0.28);
+}
+
+.stateLive .coreDot {
+  background: #e26a51;
+  box-shadow: 0 0 12px rgba(226, 106, 81, 0.85);
+}
+
+.stateLive .whisperBadge {
+  color: #f3a18f;
+}
+
+/* State: Power Pause / Dynamic Silence — serene eucalyptus sage halo */
+.statePause {
+  background: rgba(23, 33, 29, 0.86);
+  border-color: rgba(94, 155, 130, 0.62);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.32),
+    0 0 0 3px rgba(94, 155, 130, 0.18),
+    0 0 30px rgba(94, 155, 130, 0.28);
+}
+
+.statePause .haloOuter {
+  border-color: rgba(140, 206, 178, 0.75);
+  animation: sageBloom 2.2s var(--ease-studio) infinite;
+}
+
+.statePause .haloInner {
+  background: rgba(94, 155, 130, 0.34);
+}
+
+.statePause .coreDot {
+  background: #8fd2b5;
+  box-shadow: 0 0 14px rgba(143, 210, 181, 0.92);
+}
+
+@keyframes ivoryBreath {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.22);
+    opacity: 0.85;
+  }
+}
+
+@keyframes countdownPulse {
+  0%,
+  100% {
+    transform: scale(0.88);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.95;
+  }
+}
+
+@keyframes onAirPulse {
+  0%,
+  100% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.32);
+    opacity: 0.95;
+  }
+}
+
+@keyframes sageBloom {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.55);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .haloOuter {
+    animation: none !important;
+  }
+}
