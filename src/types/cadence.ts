@@ -7,7 +7,7 @@
 // Core Navigation & Modes
 // ---------------------------------------------------------------------------
 
-export type AppView = 'lobby' | 'studio' | 'review';
+export type AppView = 'practice' | 'create' | 'progress' | 'studio' | 'review';
 
 export type Lens = 'camera' | 'clarity' | 'negotiation';
 
@@ -18,7 +18,7 @@ export type StudioMode = 'camera' | 'audio' | 'timer';
 export type StudioPhase = 'prep' | 'countdown' | 'live';
 
 // ---------------------------------------------------------------------------
-// Curriculum: Lenses, Frameworks & Scenarios
+// Curriculum: Lenses, Frameworks, Questions, Scenarios & Templates
 // ---------------------------------------------------------------------------
 
 export type FrameworkId =
@@ -61,6 +61,12 @@ export interface Framework {
   beats: FrameworkBeat[];
 }
 
+export interface ScenarioQuestion {
+  id: string;
+  text: string;
+  hint?: string;
+}
+
 export interface Scenario {
   id: string;
   title: string;
@@ -72,18 +78,34 @@ export interface Scenario {
   stakes: string;
   /** Actionable speaking challenge */
   prompt: string;
+  /** 1-6 concrete questions or talking points to answer live one by one */
+  questions: ScenarioQuestion[];
   /** Optional single physical or vocal focus cue before/during the take */
   presenceCue?: string;
   /** Counterpart persona label for negotiation scenarios */
   counterpartRole?: string;
   /** Realistic opening pushback line (negotiation lens) */
   openingPushback?: string;
-  /** Optional 3 keyword-slot placeholder prompts for the 15s Quick Outline */
+  /** Optional 3 keyword-slot placeholder prompts for quick outline notes */
   outlineHints?: [string, string, string];
   /** True when created by the user */
   isCustom?: boolean;
   /** ISO creation timestamp for custom scenarios */
   createdAt?: string;
+}
+
+export interface ScenarioTemplate {
+  id: string;
+  label: string;
+  description: string;
+  lens: Lens;
+  frameworkId: FrameworkId;
+  durationSec: number;
+  defaultTitle: string;
+  defaultStakes: string;
+  defaultQuestions: string[];
+  defaultPushback?: string;
+  defaultRole?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +172,61 @@ export interface BeatTransition {
 }
 
 // ---------------------------------------------------------------------------
+// Speech Coach & Transcript Annotations
+// ---------------------------------------------------------------------------
+
+export type CoachCategory =
+  | 'pace'
+  | 'pauses'
+  | 'fillers'
+  | 'hedges'
+  | 'structure'
+  | 'opening'
+  | 'negotiation'
+  | 'clarity';
+
+export interface CoachFeedbackItem {
+  id: string;
+  category: CoachCategory;
+  title: string;
+  detail: string;
+}
+
+export interface LineRewriteTip {
+  original: string;
+  sharpened: string;
+  reason: string;
+  offsetMs?: number;
+}
+
+export type TranscriptAnnotationKind = 'filler' | 'hedge' | 'power';
+
+export interface TranscriptAnnotation {
+  kind: TranscriptAnnotationKind;
+  text: string;
+  start: number;
+  end: number;
+  tip: string;
+}
+
+export interface CoachReport {
+  overallScore: number;
+  verdict: string;
+  subscores: {
+    pace: number;
+    pauses: number;
+    clarity: number;
+    structure: number;
+  };
+  strengths: CoachFeedbackItem[];
+  improvements: CoachFeedbackItem[];
+  rewriteTip: LineRewriteTip | null;
+  hedgeCount: number;
+  powerPhraseCount: number;
+  topFocusSummary: string;
+}
+
+// ---------------------------------------------------------------------------
 // Post-Session Feedback, Reflection & Persistence
 // ---------------------------------------------------------------------------
 
@@ -197,6 +274,8 @@ export interface OneChangeCue {
 export interface TakeDelta {
   previousSessionId: string;
   previousTakeNumber: number;
+  /** Current overall coach score minus previous (null if unavailable in either take) */
+  scoreDiff?: number | null;
   /** Current WPM minus previous WPM (null if unavailable in either take) */
   wpmDiff: number | null;
   /** Current powerPauseCount minus previous */
@@ -229,6 +308,10 @@ export interface SessionRecord {
   outlineNotes: string[];
   oneChangeCue: OneChangeCue;
   reflectionNote: string;
+  /** Automated Speech Coach evaluation (optional for legacy localStorage records) */
+  coachReport?: CoachReport;
+  /** Snapshot of the questions answered in this take so History/Review stays accurate */
+  questionSnapshots?: ScenarioQuestion[];
 }
 
 /** Local ephemeral recording handle for instant Mirror Review playback (not stored in localStorage) */
@@ -298,7 +381,7 @@ export interface UseStudioSessionResult {
   mediaStream: MediaStream | null;
   speechSupported: boolean;
 
-  // Structure state
+  // Structure state (maps to scenario.questions when present, else framework.beats; up to 6 slots)
   activeBeatIndex: number;
   beatTransitions: BeatTransition[];
   outlineNotes: string[];

@@ -1,4 +1,4 @@
-import type { Scenario } from '../types/cadence';
+import type { Lens, Scenario, ScenarioTemplate } from '../types/cadence';
 
 export const SCENARIOS: Scenario[] = [
   // -------------------------------------------------------------------------
@@ -17,6 +17,23 @@ export const SCENARIOS: Scenario[] = [
     presenceCue:
       'Hold the lens for 1 quiet breath before word one; finish with a warm 2-second pause.',
     outlineHints: ['Role in 5 words', 'Problem you love', 'Invite to connect'],
+    questions: [
+      {
+        id: 'cam-intro-q1',
+        text: 'Who are you, and what do you focus on right now?',
+        hint: 'What · Open directly — skip “uh, hi everyone”',
+      },
+      {
+        id: 'cam-intro-q2',
+        text: 'What problem do you genuinely love solving — and why does it matter?',
+        hint: 'So What · Share one specific friction you care about',
+      },
+      {
+        id: 'cam-intro-q3',
+        text: 'How should teammates or peers reach out and work with you?',
+        hint: 'Now What · Give one warm, concrete invitation and pause',
+      },
+    ],
   },
   {
     id: 'cam-allhands',
@@ -35,6 +52,28 @@ export const SCENARIOS: Scenario[] = [
       '3 crisp shift labels',
       'Measurable Q3 payoff',
     ],
+    questions: [
+      {
+        id: 'cam-allhands-q1',
+        text: 'What is the hidden cost of keeping our current workflow?',
+        hint: 'Lens Hook · Lead with one sharp contrast or stat',
+      },
+      {
+        id: 'cam-allhands-q2',
+        text: 'Where is the real bottleneck slowing the team down?',
+        hint: 'Problem · Name the pain in plain human words',
+      },
+      {
+        id: 'cam-allhands-q3',
+        text: 'What are the three concrete shifts you are proposing?',
+        hint: 'Solution · Signpost clearly: First, Second, Third',
+      },
+      {
+        id: 'cam-allhands-q4',
+        text: 'What measurably improves in Q3 if we commit today?',
+        hint: 'Impact · Paint the payoff, then hold a 2s power pause',
+      },
+    ],
   },
   {
     id: 'cam-badnews',
@@ -49,6 +88,28 @@ export const SCENARIOS: Scenario[] = [
     presenceCue:
       'Hold steady lens eye-line and use downward vocal endings — zero apologetic uptalk.',
     outlineHints: ['New launch date', 'Root cause + 2 fixes', 'Support needed now'],
+    questions: [
+      {
+        id: 'cam-badnews-q1',
+        text: 'What is the new launch date and headline status?',
+        hint: 'Bottom Line · State the date in sentence one',
+      },
+      {
+        id: 'cam-badnews-q2',
+        text: 'What caused the slip, and what two guardrails prevent it repeating?',
+        hint: 'Signpost Pillars · Keep tone calm and factual',
+      },
+      {
+        id: 'cam-badnews-q3',
+        text: 'What concrete proof shows the revised date will hold?',
+        hint: 'Anchor Proof · Cite one verified milestone or test',
+      },
+      {
+        id: 'cam-badnews-q4',
+        text: 'What exact decision or support do you need from leadership?',
+        hint: 'Clean Close · Drop tone cleanly — zero apologetic uptalk',
+      },
+    ],
   },
 
   // -------------------------------------------------------------------------
@@ -67,6 +128,28 @@ export const SCENARIOS: Scenario[] = [
     presenceCue:
       'Take a 2-second silent breath before answering — silence looks thoughtful, “um” looks rattled.',
     outlineHints: ['Ship vs. polish call', 'Core trade-off', 'One quick precedent'],
+    questions: [
+      {
+        id: 'think-spot-q1',
+        text: 'Ship fast with rough edges or delay two weeks — where do you stand?',
+        hint: 'Point · Pick one clear side in sentence one',
+      },
+      {
+        id: 'think-spot-q2',
+        text: 'What is the single strongest trade-off driving your call?',
+        hint: 'Reason · Anchor on the one factor that decides it',
+      },
+      {
+        id: 'think-spot-q3',
+        text: 'What past launch or user signal backs up that judgment?',
+        hint: 'Example · Share one tight 15-second precedent',
+      },
+      {
+        id: 'think-spot-q4',
+        text: 'So what should the team commit to right after this meeting?',
+        hint: 'Point (Echo) · Restate your stance calmly and pause',
+      },
+    ],
   },
   {
     id: 'think-elevator',
@@ -85,6 +168,23 @@ export const SCENARIOS: Scenario[] = [
       'Link to top goals',
       'Next milestone + date',
     ],
+    questions: [
+      {
+        id: 'think-elevator-q1',
+        text: 'In one sentence, how is your initiative actually doing right now?',
+        hint: 'What · Honest pulse — green, yellow, or red',
+      },
+      {
+        id: 'think-elevator-q2',
+        text: 'Why does that momentum or risk matter to top company goals?',
+        hint: 'So What · Connect straight to customers or revenue',
+      },
+      {
+        id: 'think-elevator-q3',
+        text: 'What is the next concrete milestone and target date?',
+        hint: 'Now What · Land one crisp date before doors open',
+      },
+    ],
   },
   {
     id: 'think-qa',
@@ -102,6 +202,28 @@ export const SCENARIOS: Scenario[] = [
       'Direct answer first',
       '2–3 spreadsheet risks',
       'Cost of staying put',
+    ],
+    questions: [
+      {
+        id: 'think-qa-q1',
+        text: 'Why not just keep our spreadsheet instead of building this?',
+        hint: 'Bottom Line · Answer calmly and directly upfront',
+      },
+      {
+        id: 'think-qa-q2',
+        text: 'What two or three real limits break down as we scale?',
+        hint: 'Signpost Pillars · First, Second, Third — zero defensiveness',
+      },
+      {
+        id: 'think-qa-q3',
+        text: 'What real cost or error has the spreadsheet already caused?',
+        hint: 'Anchor Proof · Drop one concrete number or incident',
+      },
+      {
+        id: 'think-qa-q4',
+        text: 'What low-risk pilot proves value before we go all-in?',
+        hint: 'Clean Close · Invite alignment with a clear next step',
+      },
     ],
   },
 
@@ -128,6 +250,28 @@ export const SCENARIOS: Scenario[] = [
       'Market scope anchor',
       'Soft BATNA + How ask',
     ],
+    questions: [
+      {
+        id: 'neg-salary-q1',
+        text: 'How do you validate their band limit without backing down?',
+        hint: 'Audit / Validate · Warm tone, acknowledge internal fairness',
+      },
+      {
+        id: 'neg-salary-q2',
+        text: 'What objective market data or scope justifies your target range?',
+        hint: 'Objective Criteria · Shift from ego to comparable scope',
+      },
+      {
+        id: 'neg-salary-q3',
+        text: 'How do you state your floor or other options without sounding like a threat?',
+        hint: 'Calm Boundary · Low downward tone, express preference',
+      },
+      {
+        id: 'neg-salary-q4',
+        text: 'What calibrated “How/What” question invites them to bridge the gap?',
+        hint: 'Collaborative Pivot · Ask cleanly, then hold 4s silence',
+      },
+    ],
   },
   {
     id: 'neg-client',
@@ -145,6 +289,28 @@ export const SCENARIOS: Scenario[] = [
     openingPushback:
       'Our CFO is slashing vendor spend across the board. We need you to bundle the analytics module and bring renewal down 20%.',
     outlineHints: ['2–3 word mirror', 'Label CFO pressure', 'Calibrated How + 4s'],
+    questions: [
+      {
+        id: 'neg-client-q1',
+        text: 'Which 2–3 words from their demand will you mirror with calm curiosity?',
+        hint: 'Mirror · Echo “bring renewal down 20%?” gently',
+      },
+      {
+        id: 'neg-client-q2',
+        text: 'How do you label the CFO pressure they feel without saying “I”?',
+        hint: 'Label · Start with “It sounds like…” or “It seems like…”',
+      },
+      {
+        id: 'neg-client-q3',
+        text: 'What “How am I supposed to…” question puts the scope trade-off back on them?',
+        hint: 'Calibrated Question · Protect quality without a hard “no”',
+      },
+      {
+        id: 'neg-client-q4',
+        text: 'Hold 4 calm seconds of silence — what options do you invite them to propose?',
+        hint: 'Dynamic Silence · Breathe, hold lens, let them fill the air',
+      },
+    ],
   },
   {
     id: 'neg-deadline',
@@ -166,8 +332,136 @@ export const SCENARIOS: Scenario[] = [
       'Label board stakes',
       '“What must ship?”',
     ],
+    questions: [
+      {
+        id: 'neg-deadline-q1',
+        text: 'What exact 2–3 words from the executive will you mirror calmly?',
+        hint: 'Mirror · Softly echo “live by the 15th?”',
+      },
+      {
+        id: 'neg-deadline-q2',
+        text: 'How do you label the board visibility stakes they are carrying?',
+        hint: 'Label · “It sounds like the board demo is critical…”',
+      },
+      {
+        id: 'neg-deadline-q3',
+        text: 'What “What/How” question forces a clear scope-versus-date choice?',
+        hint: 'Calibrated Question · “What must be live on the 15th?”',
+      },
+      {
+        id: 'neg-deadline-q4',
+        text: 'Hold 4 calm seconds — let them reveal what truly matters most.',
+        hint: 'Dynamic Silence · Stay grounded and wait for their trade-off',
+      },
+    ],
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Create View: 1-Click Scenario Templates & Question Suggestion Chips
+// ---------------------------------------------------------------------------
+
+export const SCENARIO_TEMPLATES: ScenarioTemplate[] = [
+  {
+    id: 'tpl-camera',
+    label: 'Camera / YouTube Video',
+    description:
+      'Hook viewers in 10 seconds, share one sharp insight, and land a clean takeaway.',
+    lens: 'camera',
+    frameworkId: 'hook-psi',
+    durationSec: 60,
+    defaultTitle: '60-Second Camera Take',
+    defaultStakes:
+      'You are recording a crisp short-form video or async update — win attention fast and speak straight to the lens.',
+    defaultQuestions: [
+      'What surprising hook or contrast grabs attention in the first 10 seconds?',
+      'What is your main insight — and one real example that proves it?',
+      'What is the single takeaway or action you want viewers to remember?',
+    ],
+  },
+  {
+    id: 'tpl-interview',
+    label: 'Job Interview Answer',
+    description:
+      'Lead with a clear stance, tell a tight story with measurable impact, and tie it to the role.',
+    lens: 'clarity',
+    frameworkId: 'prep',
+    durationSec: 75,
+    defaultTitle: 'Behavioral Interview Answer',
+    defaultStakes:
+      'The hiring panel just asked a high-stakes question — sound structured, calm, and memorable without rambling.',
+    defaultQuestions: [
+      'What is your clear, one-sentence headline answer upfront?',
+      'What specific story, decision, and measurable result proves it?',
+      'Why does that experience directly matter for this role and team?',
+    ],
+  },
+  {
+    id: 'tpl-pitch',
+    label: 'Work Pitch or Update',
+    description:
+      'Deliver your bottom line first, back it with crisp proof, and close with an unmistakable ask.',
+    lens: 'clarity',
+    frameworkId: 'bluf-pyramid',
+    durationSec: 60,
+    defaultTitle: 'Executive Pitch or Status Update',
+    defaultStakes:
+      'Busy stakeholders gave you 60 seconds — lead with your recommendation and leave zero ambiguity.',
+    defaultQuestions: [
+      'What is your bottom-line recommendation or headline update?',
+      'What two or three reasons and one concrete proof point back it up?',
+      'What exact decision, alignment, or next step are you asking for?',
+    ],
+  },
+  {
+    id: 'tpl-negotiation',
+    label: 'Salary or Deal Negotiation',
+    description:
+      'Respond calmly to live pushback using empathy labels, objective benchmarks, and calibrated questions.',
+    lens: 'negotiation',
+    frameworkId: 'tactical-empathy',
+    durationSec: 75,
+    defaultTitle: 'Compensation or Deal Counter',
+    defaultStakes:
+      'You are facing live pushback on price, scope, or compensation — stay warm, grounded, and collaborative under pressure.',
+    defaultRole: 'Hiring Manager / Client',
+    defaultPushback:
+      'We really want to move forward together, but your number is above what we budgeted for this quarter.',
+    defaultQuestions: [
+      'How will you mirror or label their budget constraint calmly?',
+      'What objective value, scope, or market benchmark anchors your ask?',
+      'What calibrated “How/What” question invites them to bridge the gap — followed by silence?',
+    ],
+  },
+];
+
+export const QUESTION_SUGGESTIONS: Record<Lens, string[]> = {
+  camera: [
+    'What bold hook grabs attention in the first 10 seconds?',
+    'What common mistake or friction are you calling out?',
+    'What quick personal story makes this concrete?',
+    'What are the three key shifts or takeaways?',
+    'What single action should listeners take next?',
+  ],
+  clarity: [
+    'What is my bottom-line answer in one crisp sentence?',
+    'What is the strongest reason or trade-off behind this?',
+    'What concrete metric or example proves my point?',
+    'What real risk happens if we stay with the status quo?',
+    'What exact decision or next step am I asking for?',
+  ],
+  negotiation: [
+    'Which 2–3 words of their objection will I mirror?',
+    'What pressure or concern are they feeling right now?',
+    'What objective benchmark or scope supports my ask?',
+    'How do I state my boundary warmly without threatening?',
+    'What “How/What” question hands the puzzle back to them?',
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Scenario Helpers
+// ---------------------------------------------------------------------------
 
 export function getScenarioById(
   id: string,

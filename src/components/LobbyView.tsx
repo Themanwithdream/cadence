@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowRight,
+  Clock,
   Layers,
+  ListChecks,
   MessageSquareQuote,
   Pencil,
   Plus,
@@ -26,17 +28,23 @@ export interface LobbyViewProps {
   activeLensFilter: LensFilter;
   practicedScenarioIds: string[];
   onLensFilterChange: (filter: LensFilter) => void;
-  onStartScenario: (scenario: Scenario) => void;
-  onCreateScenario: () => void;
+  onStartScenario: (scenario: Scenario, frameworkOverride?: FrameworkId) => void;
+  onGoToCreate: () => void;
   onEditScenario: (scenario: Scenario) => void;
   onDeleteScenario: (scenarioId: string) => void;
 }
 
-const LENS_TABS: Array<{ id: Lens; label: string }> = [
-  { id: 'camera', label: 'Camera' },
-  { id: 'clarity', label: 'Clarity' },
+const CATEGORY_TABS: Array<{ id: Lens; label: string }> = [
+  { id: 'camera', label: 'On Camera' },
+  { id: 'clarity', label: 'Clear Thinking' },
   { id: 'negotiation', label: 'Negotiation' },
 ];
+
+const LENS_CHIP_LABEL: Record<Lens, string> = {
+  camera: 'On Camera',
+  clarity: 'Clear Thinking',
+  negotiation: 'Negotiation',
+};
 
 function LensIcon({ lens, size = 13 }: { lens: Lens; size?: number }) {
   switch (lens) {
@@ -58,10 +66,14 @@ export function LobbyView({
   practicedScenarioIds,
   onLensFilterChange,
   onStartScenario,
-  onCreateScenario,
+  onGoToCreate,
   onEditScenario,
   onDeleteScenario,
 }: LobbyViewProps) {
+  const [selectedBlueprintId, setSelectedBlueprintId] = useState<FrameworkId>(
+    frameworks[0]?.id ?? 'bluf-pyramid'
+  );
+
   const frameworkMap = useMemo(() => {
     const map = new Map<FrameworkId, Framework>();
     for (const fw of frameworks) {
@@ -91,72 +103,117 @@ export function LobbyView({
   }, [scenarios, activeLensFilter]);
 
   const todaysFramework = frameworkMap.get(todaysScenario.frameworkId);
-  const todaysLensMeta = lensMeta[todaysScenario.lens];
+  const selectedBlueprint =
+    frameworkMap.get(selectedBlueprintId) ?? frameworks[0] ?? null;
+
+  const matchedBlueprintScenario = useMemo(() => {
+    if (!selectedBlueprint) return scenarios[0];
+    return (
+      scenarios.find((sc) => sc.frameworkId === selectedBlueprint.id) ??
+      scenarios.find((sc) => sc.lens === selectedBlueprint.primaryLens) ??
+      scenarios[0]
+    );
+  }, [selectedBlueprint, scenarios]);
 
   return (
     <main className={styles.page}>
-      {/* Hero Card — Today's Rep */}
-      <section className={styles.heroCard} aria-labelledby="hero-rep-title">
-        <div className={styles.heroMetaRow}>
-          <span className={styles.heroEyebrow}>
-            <span className={styles.eyebrowDot} aria-hidden="true" />
-            Today&rsquo;s Rep
-          </span>
-          <span className={`${styles.lensChip} ${styles[`lens_${todaysScenario.lens}`]}`}>
-            <LensIcon lens={todaysScenario.lens} size={12} />
-            {todaysLensMeta.shortLabel}
-          </span>
-          <span className={`${styles.metaText} tabular-nums`}>
-            {todaysScenario.durationSec}s
-          </span>
-          {todaysFramework && (
-            <span className={styles.metaText}>{todaysFramework.shortName}</span>
-          )}
-        </div>
-
-        <div className={styles.heroBody}>
-          <h1 id="hero-rep-title" className={styles.heroTitle}>
-            {todaysScenario.title}
+      {/* Split Hero Banner */}
+      <section className={styles.heroBanner} aria-labelledby="hero-headline">
+        <div className={styles.heroIntro}>
+          <span className={styles.heroKicker}>Voice &amp; Presence Studio</span>
+          <h1 id="hero-headline" className={styles.heroHeadline}>
+            Speak clearly. Sound calm. Own the room.
           </h1>
-          <p className={styles.heroStakes}>{todaysScenario.stakes}</p>
+          <p className={styles.heroSubtitle}>
+            Answer structured questions on camera or mic, then get instant transcript
+            highlights and tailored speech coaching.
+          </p>
+
+          <div className={styles.heroCtas}>
+            <button
+              type="button"
+              className={styles.primaryCta}
+              onClick={() => onStartScenario(todaysScenario)}
+            >
+              <span>Start Today&rsquo;s Rep</span>
+              <ArrowRight size={17} strokeWidth={1.85} aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              className={styles.secondaryCta}
+              onClick={onGoToCreate}
+            >
+              <Plus size={16} strokeWidth={1.9} aria-hidden="true" />
+              <span>Build Your Own</span>
+            </button>
+          </div>
         </div>
 
-        <div className={styles.heroActions}>
-          <button
-            type="button"
-            className={styles.primaryCta}
-            onClick={() => onStartScenario(todaysScenario)}
-          >
-            <span>Enter Studio</span>
-            <ArrowRight size={17} strokeWidth={1.85} aria-hidden="true" />
-          </button>
+        <article className={styles.featuredCard} aria-labelledby="featured-rep-title">
+          <div className={styles.featuredTop}>
+            <span className={styles.featuredEyebrow}>
+              <span className={styles.eyebrowDot} aria-hidden="true" />
+              Today&rsquo;s Rep
+            </span>
+            <div className={styles.featuredChips}>
+              <span className={`${styles.lensChip} ${styles[`lens_${todaysScenario.lens}`]}`}>
+                <LensIcon lens={todaysScenario.lens} size={12} />
+                {LENS_CHIP_LABEL[todaysScenario.lens]}
+              </span>
+              <span className={`${styles.durationPill} tabular-nums`}>
+                {todaysScenario.durationSec}s
+              </span>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            className={styles.secondaryCta}
-            onClick={onCreateScenario}
-          >
-            <Plus size={16} strokeWidth={1.9} aria-hidden="true" />
-            <span>Create Scenario</span>
-          </button>
-        </div>
+          <h2 id="featured-rep-title" className={styles.featuredTitle}>
+            {todaysScenario.title}
+          </h2>
+
+          {todaysScenario.questions.length > 0 && (
+            <ol className={styles.featuredQuestions} aria-label="Questions to answer">
+              {todaysScenario.questions.slice(0, 4).map((q, idx) => (
+                <li key={q.id} className={styles.featuredQuestionItem}>
+                  <span className={`${styles.questionNum} tabular-nums`}>{idx + 1}</span>
+                  <span className={styles.questionText}>{q.text}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <div className={styles.featuredFooter}>
+            <span className={styles.featuredFramework}>
+              {todaysFramework?.shortName ?? lensMeta[todaysScenario.lens].shortLabel}
+            </span>
+
+            <button
+              type="button"
+              className={styles.featuredAction}
+              onClick={() => onStartScenario(todaysScenario)}
+            >
+              <span>Practice</span>
+              <ArrowRight size={15} strokeWidth={1.9} aria-hidden="true" />
+            </button>
+          </div>
+        </article>
       </section>
 
-      {/* Practice Desk */}
-      <section className={styles.deskSection} aria-label="Practice scenarios">
-        <div className={styles.deskTopRow}>
-          <h2 className={styles.deskHeading}>Practice Desk</h2>
+      {/* Organized Practice Library */}
+      <section className={styles.librarySection} aria-label="Practice library">
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionHeading}>Practice Library</h2>
           <button
             type="button"
-            className={styles.newScenarioButton}
-            onClick={onCreateScenario}
+            className={styles.createInlineButton}
+            onClick={onGoToCreate}
           >
             <Plus size={15} strokeWidth={2} aria-hidden="true" />
-            <span>New Scenario</span>
+            <span>Create New</span>
           </button>
         </div>
 
-        <div className={styles.filterBar} role="tablist" aria-label="Filter scenarios">
+        <div className={styles.filterBar} role="tablist" aria-label="Filter scenarios by category">
           <button
             type="button"
             role="tab"
@@ -183,7 +240,7 @@ export function LobbyView({
             <span className={`${styles.filterCount} tabular-nums`}>{counts.custom}</span>
           </button>
 
-          {LENS_TABS.map((tab) => {
+          {CATEGORY_TABS.map((tab) => {
             const active = activeLensFilter === tab.id;
             return (
               <button
@@ -206,27 +263,30 @@ export function LobbyView({
         {activeLensFilter === 'custom' && filteredScenarios.length === 0 ? (
           <div className={styles.customEmptyCard}>
             <h3 className={styles.customEmptyTitle}>
-              Bring your own moment into the studio.
+              Design a scenario around your exact talk or meeting.
             </h3>
             <p className={styles.customEmptyCopy}>
-              Prep for an upcoming pitch, hard conversation, or interview with a custom room
-              saved privately on this device.
+              Start from a template or add the 3–5 questions you want to answer aloud —
+              Cadence turns them into calm live cue cards.
             </p>
             <button
               type="button"
               className={styles.primaryCta}
-              onClick={onCreateScenario}
+              onClick={onGoToCreate}
             >
-              <Plus size={16} strokeWidth={2} aria-hidden="true" />
-              <span>Create Your First Scenario</span>
+              <span>Build Your First Scenario</span>
+              <ArrowRight size={16} strokeWidth={1.9} aria-hidden="true" />
             </button>
           </div>
         ) : (
           <div className={styles.grid}>
             {filteredScenarios.map((scenario) => {
               const fw = frameworkMap.get(scenario.frameworkId);
-              const meta = lensMeta[scenario.lens];
               const isPracticed = practicedSet.has(scenario.id);
+              const questionCount =
+                scenario.questions.length > 0
+                  ? scenario.questions.length
+                  : fw?.beats.length ?? 3;
 
               return (
                 <article key={scenario.id} className={styles.card}>
@@ -234,7 +294,7 @@ export function LobbyView({
                     <div className={styles.cardTopLeft}>
                       <span className={`${styles.lensChip} ${styles[`lens_${scenario.lens}`]}`}>
                         <LensIcon lens={scenario.lens} size={12} />
-                        {meta.shortLabel}
+                        {LENS_CHIP_LABEL[scenario.lens]}
                       </span>
                       {scenario.isCustom && (
                         <span className={styles.customBadge}>Custom</span>
@@ -264,6 +324,12 @@ export function LobbyView({
                       {scenario.title}
                     </button>
                   </h3>
+
+                  <span className={styles.questionCountPill}>
+                    <ListChecks size={12} strokeWidth={1.75} aria-hidden="true" />
+                    <span className="tabular-nums">{questionCount}</span>
+                    <span>{questionCount === 1 ? 'question' : 'questions'}</span>
+                  </span>
 
                   <p className={styles.cardStakes}>{scenario.stakes}</p>
 
@@ -314,6 +380,93 @@ export function LobbyView({
           </div>
         )}
       </section>
+
+      {/* Compact Speaking Blueprints Strip (Inline, Zero Hidden Drawers) */}
+      {selectedBlueprint && (
+        <section className={styles.blueprintsSection} aria-labelledby="blueprints-heading">
+          <div className={styles.blueprintsTop}>
+            <div>
+              <span className={styles.blueprintsEyebrow}>Speaking Blueprints</span>
+              <h2 id="blueprints-heading" className={styles.blueprintsHeading}>
+                Six proven structures for thinking on your feet
+              </h2>
+            </div>
+
+            <div
+              className={styles.blueprintPills}
+              role="tablist"
+              aria-label="Inspect speaking blueprints"
+            >
+              {frameworks.map((fw) => {
+                const active = fw.id === selectedBlueprint.id;
+                return (
+                  <button
+                    key={fw.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    className={`${styles.blueprintPill} ${
+                      active ? styles.blueprintPillActive : ''
+                    }`}
+                    onClick={() => setSelectedBlueprintId(fw.id)}
+                  >
+                    {fw.shortName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={styles.blueprintBody}>
+            <div className={styles.blueprintSummaryRow}>
+              <div>
+                <h3 className={styles.blueprintName}>{selectedBlueprint.name}</h3>
+                <p className={styles.blueprintSummary}>{selectedBlueprint.summary}</p>
+              </div>
+              <span className={styles.blueprintBestFor}>
+                <strong>Best for:</strong> {selectedBlueprint.bestFor}
+              </span>
+            </div>
+
+            <ol className={styles.beatStrip}>
+              {selectedBlueprint.beats.map((beat, idx) => (
+                <li key={beat.id} className={styles.beatCard}>
+                  <div className={styles.beatCardTop}>
+                    <span className={`${styles.beatStepNum} tabular-nums`}>
+                      0{idx + 1}
+                    </span>
+                    <span className={styles.beatLabel}>{beat.label}</span>
+                    <span className={`${styles.beatSec} tabular-nums`}>
+                      <Clock size={11} strokeWidth={1.7} aria-hidden="true" />
+                      {beat.secHint}s
+                    </span>
+                  </div>
+                  <p className={styles.beatPrompt}>{beat.livePrompt}</p>
+                  <p className={styles.beatStarter}>{beat.starterCue}</p>
+                </li>
+              ))}
+            </ol>
+
+            {matchedBlueprintScenario && (
+              <div className={styles.blueprintFooter}>
+                <span className={styles.blueprintSuggested}>
+                  Try it on: <strong>{matchedBlueprintScenario.title}</strong>
+                </span>
+                <button
+                  type="button"
+                  className={styles.blueprintPracticeBtn}
+                  onClick={() =>
+                    onStartScenario(matchedBlueprintScenario, selectedBlueprint.id)
+                  }
+                >
+                  <span>Practice with this blueprint</span>
+                  <ArrowRight size={14} strokeWidth={1.9} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

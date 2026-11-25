@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -11,6 +11,7 @@ import {
   Play,
   Radio,
   RotateCcw,
+  Sparkles,
   Square,
   Zap,
 } from 'lucide-react';
@@ -35,8 +36,18 @@ export interface StudioViewProps {
   studio: UseStudioSessionResult;
   takeNumber: number;
   pinnedCue?: OneChangeCue | null;
-  onBackToLobby: () => void;
+  onBackToPractice: () => void;
   onSelectFramework: (frameworkId: FrameworkId) => void;
+}
+
+interface StudioStep {
+  id: string;
+  index: number;
+  tag: string;
+  prompt: string;
+  hint: string;
+  placeholder: string;
+  secHint: number;
 }
 
 function formatTimeSec(totalSec: number): string {
@@ -46,20 +57,6 @@ function formatTimeSec(totalSec: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-function getOutlineSlotForBeat(beatIndex: number, totalBeats: number): number {
-  if (totalBeats <= 1 || beatIndex <= 0) return 0;
-  if (beatIndex >= totalBeats - 1) return 2;
-  return 1;
-}
-
-const DEFAULT_OUTLINE_HINTS: [string, string, string] = [
-  'Opening stance…',
-  'Key proof…',
-  'Clean close…',
-];
-
-const OUTLINE_SLOT_LABELS: [string, string, string] = ['1 · Open', '2 · Core', '3 · Close'];
-
 export function StudioView({
   scenario,
   framework,
@@ -68,7 +65,7 @@ export function StudioView({
   studio,
   takeNumber,
   pinnedCue = null,
-  onBackToLobby,
+  onBackToPractice,
   onSelectFramework,
 }: StudioViewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -79,17 +76,52 @@ export function StudioView({
   const isCountdown = studio.phase === 'countdown';
   const isLive = studio.phase === 'live';
 
-  const beats = framework.beats;
-  const safeBeatIndex =
-    beats.length > 0
-      ? Math.max(0, Math.min(studio.activeBeatIndex, beats.length - 1))
-      : 0;
-  const activeBeat = beats[safeBeatIndex] ?? beats[0];
-  const isLastBeat = safeBeatIndex >= beats.length - 1;
-  const nextBeat = !isLastBeat ? beats[safeBeatIndex + 1] : null;
+  // Derive live speaking steps from scenario.questions (falling back to framework.beats)
+  const hasQuestions = scenario.questions.length > 0;
+  const steps: StudioStep[] = useMemo(() => {
+    if (scenario.questions.length > 0) {
+      const perQuestionSec = Math.max(
+        10,
+        Math.round(scenario.durationSec / scenario.questions.length),
+      );
+      return scenario.questions.map((q, idx) => {
+        const matchedBeat =
+          framework.beats[Math.min(idx, Math.max(0, framework.beats.length - 1))];
+        const fallbackHint = matchedBeat
+          ? `${matchedBeat.label}: ${matchedBeat.starterCue}`
+          : '';
+        return {
+          id: q.id,
+          index: idx,
+          tag: `Q${idx + 1}`,
+          prompt: q.text,
+          hint: q.hint?.trim() || fallbackHint,
+          placeholder: scenario.outlineHints?.[idx] || 'Optional 2–3 word cue…',
+          secHint: perQuestionSec,
+        };
+      });
+    }
 
-  const activeOutlineSlot = getOutlineSlotForBeat(safeBeatIndex, beats.length);
-  const activeOutlineKeyword = (studio.outlineNotes[activeOutlineSlot] ?? '').trim();
+    return framework.beats.map((beat, idx) => ({
+      id: beat.id,
+      index: idx,
+      tag: `Q${idx + 1}`,
+      prompt: beat.livePrompt,
+      hint: beat.starterCue,
+      placeholder: scenario.outlineHints?.[idx] || `${beat.label} keyword…`,
+      secHint: beat.secHint,
+    }));
+  }, [framework.beats, scenario.durationSec, scenario.outlineHints, scenario.questions]);
+
+  const safeStepIndex =
+    steps.length > 0
+      ? Math.max(0, Math.min(studio.activeBeatIndex, steps.length - 1))
+      : 0;
+  const activeStep = steps[safeStepIndex] ?? steps[0];
+  const isLastStep = safeStepIndex >= steps.length - 1;
+  const nextStepNumber = Math.min(steps.length, safeStepIndex + 2);
+
+  const activeKeywordNote = (studio.outlineNotes[safeStepIndex] ?? '').trim();
 
   const pushbackQuote = scenario.openingPushback?.trim() ?? '';
   const hasCounterpartPushback = pushbackQuote.length > 0;
@@ -142,7 +174,7 @@ export function StudioView({
     }
   }, [isPrep, frameworkMenuOpen]);
 
-  // Keyboard shortcuts during live take: Space / ArrowRight advances beat
+  // Keyboard shortcuts during live take: Space / ArrowRight advances to next question
   useEffect(() => {
     if (!isLive) return;
 
@@ -160,7 +192,6 @@ export function StudioView({
         ) {
           return;
         }
-        // Prevent double-firing when Space triggers a focused button's native click
         if (event.code === 'Space' && tag === 'BUTTON') {
           return;
         }
@@ -215,7 +246,6 @@ export function StudioView({
       !hasCameraHardwareIssue &&
       !hasAudioHardwareIssue);
 
-  const outlineHints = scenario.outlineHints ?? DEFAULT_OUTLINE_HINTS;
   const showVoiceRibbon = studio.mode === 'camera' || studio.mode === 'audio';
 
   const acousticGlowScale =
@@ -230,17 +260,17 @@ export function StudioView({
       className={styles.studioShell}
       aria-label={`${lensMeta.label} Live Speaking Studio`}
     >
-      {/* Slim Studio Header — 4 essentials only */}
+      {/* Slim Studio Header — 4 essentials */}
       <header className={styles.studioHeader}>
         <div className={styles.headerLeft}>
           <button
             type="button"
             className={styles.backButton}
-            onClick={onBackToLobby}
-            aria-label="Back to Lobby"
+            onClick={onBackToPractice}
+            aria-label="Back to Practice"
           >
             <ArrowLeft size={15} strokeWidth={2} />
-            <span>Lobby</span>
+            <span>Practice</span>
           </button>
 
           <span className={styles.headerDivider} aria-hidden="true" />
@@ -265,8 +295,8 @@ export function StudioView({
               aria-expanded={frameworkMenuOpen}
               title={
                 isPrep
-                  ? 'Swap speaking framework'
-                  : 'Finish or restart take to swap framework'
+                  ? 'Swap speaking blueprint'
+                  : 'Finish or restart take to swap blueprint'
               }
             >
               <span className={styles.frameworkPillDot} aria-hidden="true" />
@@ -281,9 +311,9 @@ export function StudioView({
               <div
                 className={styles.frameworkDropdown}
                 role="listbox"
-                aria-label="Choose speaking framework"
+                aria-label="Choose speaking blueprint"
               >
-                <div className={styles.dropdownHeading}>Swap Structure</div>
+                <div className={styles.dropdownHeading}>Speaking Blueprint</div>
                 {availableFrameworks.map((fw) => {
                   const selected = fw.id === framework.id;
                   return (
@@ -303,7 +333,7 @@ export function StudioView({
                       <div className={styles.frameworkOptionTop}>
                         <span className={styles.frameworkOptionName}>{fw.name}</span>
                         <span className={styles.frameworkOptionBeats}>
-                          {fw.beats.length} beats
+                          {fw.beats.length} steps
                           {selected && <Check size={13} className={styles.checkIcon} />}
                         </span>
                       </div>
@@ -374,7 +404,6 @@ export function StudioView({
             <div className={styles.stageVignette} aria-hidden="true" />
           </>
         ) : (
-          /* Atmospheric Warm-Charcoal Acoustic Studio Backdrop (Audio & Timer Modes) */
           <div className={styles.acousticBackdrop} aria-hidden="true">
             <div className={styles.acousticGrid} />
             <div
@@ -404,7 +433,7 @@ export function StudioView({
           </div>
         )}
 
-        {/* Take 2 One-Change Reminder Pin (Top-Right of Stage) */}
+        {/* Take 2 Focus Pin (Top-Right of Stage) */}
         {takeNumber > 1 && pinnedCue && (
           <aside className={styles.oneChangePin} aria-label="Take 2 focus reminder">
             <div className={styles.oneChangePinEyebrow}>
@@ -416,7 +445,7 @@ export function StudioView({
           </aside>
         )}
 
-        {/* Top-Center Eye-Line Lens Anchor + Directly Attached Floating Beat Teleprompter */}
+        {/* Top-Center Eye-Line Beacon + Directly Anchored Question Cue Card */}
         <div className={styles.lensCluster}>
           <EyeLineBeacon
             phase={studio.phase}
@@ -424,71 +453,107 @@ export function StudioView({
             inPowerPause={studio.acousticFrame.inPowerPause}
             inDynamicSilence={studio.acousticFrame.inDynamicSilence}
             lastPauseBloomAt={studio.lastPauseBloomAt}
+            label="Look at camera lens"
           />
 
-          {activeBeat && (
+          {activeStep && (
             <div
-              key={`${framework.id}-${activeBeat.id}`}
-              className={styles.beatTeleprompter}
+              key={`${scenario.id}-${framework.id}-${activeStep.id}`}
+              className={styles.questionCueCard}
               aria-live="polite"
             >
-              <div className={styles.beatHeader}>
-                <div className={styles.beatLabelRow}>
-                  <span className={styles.beatCounter}>
-                    Beat {safeBeatIndex + 1}/{beats.length}
+              {/* Sleek Segmented Progress Bar across top of card */}
+              <div
+                className={styles.segmentedBar}
+                role="tablist"
+                aria-label="Speech questions progress"
+              >
+                {steps.map((step, idx) => {
+                  const isCompleted = idx < safeStepIndex;
+                  const isActive = idx === safeStepIndex;
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      aria-label={`Question ${idx + 1} of ${steps.length}: ${step.prompt}`}
+                      title={`Q${idx + 1}: ${step.prompt}`}
+                      className={`${styles.segmentTrack} ${
+                        isCompleted
+                          ? styles.segmentCompleted
+                          : isActive
+                            ? styles.segmentActive
+                            : ''
+                      }`}
+                      onClick={() => studio.goToBeat(idx)}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Header Row: Question X of Y + Completed Checkmarks + Pace Hint */}
+              <div className={styles.questionHeader}>
+                <div className={styles.questionCounterRow}>
+                  <span className={styles.questionCounter}>
+                    {hasQuestions ? 'Question' : 'Step'} {safeStepIndex + 1} of {steps.length}
                   </span>
-                  <span className={styles.beatSep} aria-hidden="true">
-                    ·
-                  </span>
-                  <span className={styles.beatName}>{activeBeat.label}</span>
-                  <span className={`${styles.beatSecHint} tabular-nums`}>
-                    ~{activeBeat.secHint}s
+                  {safeStepIndex > 0 && (
+                    <span className={styles.completedBadge}>
+                      <Check size={11} strokeWidth={2.5} />
+                      <span>{safeStepIndex} done</span>
+                    </span>
+                  )}
+                  <span className={`${styles.secHintPill} tabular-nums`}>
+                    ~{activeStep.secHint}s
                   </span>
                 </div>
 
-                {/* Interactive Beat Progress Dots */}
-                <div className={styles.beatDots} role="tablist" aria-label="Framework beats">
-                  {beats.map((beat, idx) => {
-                    const isActive = idx === safeBeatIndex;
-                    const isVisited = idx < safeBeatIndex;
+                {/* Clickable Step Check / Dot Pills */}
+                <div className={styles.stepDots} aria-hidden="true">
+                  {steps.map((step, idx) => {
+                    const isCompleted = idx < safeStepIndex;
+                    const isActive = idx === safeStepIndex;
                     return (
                       <button
-                        key={beat.id}
+                        key={step.id}
                         type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        aria-label={`Beat ${idx + 1}: ${beat.label}`}
-                        title={`Beat ${idx + 1}: ${beat.label}`}
-                        className={`${styles.beatDotBtn} ${
-                          isActive
-                            ? styles.beatDotActive
-                            : isVisited
-                              ? styles.beatDotVisited
+                        tabIndex={-1}
+                        className={`${styles.stepDot} ${
+                          isCompleted
+                            ? styles.stepDotCompleted
+                            : isActive
+                              ? styles.stepDotActive
                               : ''
                         }`}
                         onClick={() => studio.goToBeat(idx)}
-                      />
+                      >
+                        {isCompleted ? <Check size={9} strokeWidth={3} /> : idx + 1}
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
-              <p className={styles.beatPrompt}>{activeBeat.livePrompt}</p>
+              {/* Active Question Display */}
+              <p className={styles.questionText}>{activeStep.prompt}</p>
 
-              <div className={styles.beatFooter}>
-                <span className={styles.starterCue}>
-                  <span className={styles.starterCueLabel}>Cue:</span> {activeBeat.starterCue}
-                </span>
+              {/* Subtle Hint + Personal Keyword Note + Shortcut */}
+              <div className={styles.questionFooter}>
+                {activeStep.hint && (
+                  <span className={styles.questionHint}>{activeStep.hint}</span>
+                )}
 
-                {activeOutlineKeyword && (
-                  <span className={styles.outlineKeywordPill} title="Your quick outline note">
-                    Note: {activeOutlineKeyword}
+                {activeKeywordNote && (
+                  <span className={styles.keywordCuePill} title="Your talking point cue">
+                    <Sparkles size={11} />
+                    <span>{activeKeywordNote}</span>
                   </span>
                 )}
 
                 {isLive && (
                   <span className={styles.shortcutHint}>
-                    {isLastBeat ? 'Hold a calm close' : 'Space / → next'}
+                    {isLastStep ? 'Hold a calm close' : 'Space / → next'}
                   </span>
                 )}
               </div>
@@ -509,7 +574,7 @@ export function StudioView({
               </h2>
               <p className={styles.hardwareMessage}>
                 {studio.mediaError?.message ??
-                  'You can still rehearse calmly with Audio Only or practice your structure on a silent timer.'}
+                  'You can still rehearse calmly with Audio Only or practice your questions on a silent timer.'}
               </p>
               <div className={styles.hardwareActions}>
                 <button
@@ -591,7 +656,7 @@ export function StudioView({
             </div>
           )}
 
-        {/* Clean Negotiation Counterpart Card (Only when scenario.openingPushback exists) */}
+        {/* Clean Burnished-Brass Counterpart Pushback Card */}
         {hasCounterpartPushback && !hasCameraHardwareIssue && !hasAudioHardwareIssue && (
           <div className={styles.counterpartWrap}>
             <aside
@@ -624,42 +689,55 @@ export function StudioView({
         )}
       </div>
 
-      {/* Calm Acoustic Ribbon Strip — Zen by default (Camera & Audio modes only) */}
+      {/* Silky 60fps Acoustic VoiceRibbon (Camera & Audio modes only) */}
       {showVoiceRibbon && (
         <div className={styles.ribbonStrip}>
           <VoiceRibbon
             acousticFrame={studio.acousticFrame}
             phase={studio.phase}
             lastPauseBloomAt={studio.lastPauseBloomAt}
-            height={62}
+            height={58}
           />
         </div>
       )}
 
-      {/* Prep & Transport Dock */}
+      {/* Reorganized Prep & Live Transport Dock */}
       <footer className={styles.transportDock}>
         {isPrep && (
           <div className={styles.prepDockLayout}>
-            <div className={styles.prepContext}>
-              <span className={styles.prepEyebrow}>Stakes</span>
-              <p className={styles.prepStakes}>{scenario.stakes}</p>
-            </div>
-
-            <div className={styles.quickOutline} aria-label="15-second quick outline">
-              <div className={styles.quickOutlineHeader}>
-                <span className={styles.quickOutlineTitle}>Quick Outline</span>
-                <span className={styles.quickOutlineSub}>3 keywords — never a script</span>
+            <div className={styles.talkingPointsArea} aria-label="Your Talking Points">
+              <div className={styles.talkingPointsHeader}>
+                <span className={styles.talkingPointsTitle}>Your Talking Points</span>
+                <span className={styles.talkingPointsSub}>(Optional keywords)</span>
+                {scenario.stakes && (
+                  <span className={styles.talkingPointsStakes} title={scenario.stakes}>
+                    · {scenario.stakes}
+                  </span>
+                )}
               </div>
-              <div className={styles.outlineInputs}>
-                {[0, 1, 2].map((slot) => (
-                  <label key={slot} className={styles.outlinePillField}>
-                    <span className={styles.outlineSlotTag}>{OUTLINE_SLOT_LABELS[slot]}</span>
+
+              <div
+                className={`${styles.talkingPointsGrid} ${
+                  steps.length > 4 ? styles.talkingPointsScroll : ''
+                }`}
+              >
+                {steps.map((step, idx) => (
+                  <label
+                    key={step.id}
+                    className={`${styles.talkingPointField} ${
+                      idx === safeStepIndex ? styles.talkingPointFieldFocused : ''
+                    }`}
+                  >
+                    <span className={styles.talkingPointTop} title={step.prompt}>
+                      <span className={styles.talkingPointBadge}>{step.tag}</span>
+                      <span className={styles.talkingPointLabel}>{step.prompt}</span>
+                    </span>
                     <input
                       type="text"
-                      className={styles.outlineInput}
-                      value={studio.outlineNotes[slot] ?? ''}
-                      onChange={(e) => studio.setOutlineNote(slot, e.target.value)}
-                      placeholder={outlineHints[slot]}
+                      className={styles.talkingPointInput}
+                      value={studio.outlineNotes[idx] ?? ''}
+                      onChange={(e) => studio.setOutlineNote(idx, e.target.value)}
+                      placeholder={step.placeholder}
                       maxLength={48}
                     />
                   </label>
@@ -715,14 +793,14 @@ export function StudioView({
                 e.currentTarget.blur();
                 studio.advanceBeat();
               }}
-              disabled={isLastBeat}
+              disabled={isLastStep}
             >
               <span>
-                {isLastBeat
-                  ? 'Final Beat Reached'
-                  : `Next Beat${nextBeat ? ` · ${nextBeat.label}` : ''}`}
+                {isLastStep
+                  ? `Final ${hasQuestions ? 'Question' : 'Step'} (${steps.length}/${steps.length})`
+                  : `Next ${hasQuestions ? 'Question' : 'Step'} (${nextStepNumber}/${steps.length})`}
               </span>
-              {!isLastBeat && (
+              {!isLastStep && (
                 <>
                   <kbd className={styles.keyCap}>Space</kbd>
                   <ArrowRight size={15} />
@@ -735,8 +813,8 @@ export function StudioView({
               className={styles.primaryCta}
               onClick={() => void studio.finishSession()}
             >
-              <Square size={14} fill="currentColor" />
-              <span>Finish &amp; Review</span>
+              <Square size={13} fill="currentColor" />
+              <span>Finish &amp; Get Coaching</span>
             </button>
           </div>
         )}

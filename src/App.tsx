@@ -14,7 +14,13 @@ import type {
   UseStudioSessionResult,
 } from './types/cadence';
 import { FRAMEWORKS, LENS_META, getFrameworkById } from './data/frameworks';
-import { SCENARIOS, getScenarioById, getTodaysScenario } from './data/scenarios';
+import {
+  QUESTION_SUGGESTIONS,
+  SCENARIOS,
+  SCENARIO_TEMPLATES,
+  getScenarioById,
+  getTodaysScenario,
+} from './data/scenarios';
 import {
   computeStreakSummary,
   deleteCustomScenario,
@@ -29,12 +35,12 @@ import {
 } from './lib/storage';
 import { computeTakeDelta } from './engine/metricsEvaluator';
 import { revokeRecordingAssetUrl } from './engine/mediaCapture';
+import { annotateTranscriptText, ensureCoachReport } from './engine/speechCoach';
 import { useStudioSession } from './hooks/useStudioSession';
 import { TopBar } from './components/TopBar';
 import { LobbyView } from './components/LobbyView';
-import { FrameworksDrawer } from './components/FrameworksDrawer';
-import { JournalDrawer } from './components/JournalDrawer';
-import { ScenarioModal } from './components/ScenarioModal';
+import { CreateScenarioView } from './components/CreateScenarioView';
+import { ProgressView } from './components/ProgressView';
 import { StudioView } from './components/StudioView';
 import { ReviewView } from './components/ReviewView';
 
@@ -56,7 +62,7 @@ interface StudioHostProps {
   previousTakeId?: string;
   pinnedCue: OneChangeCue | null;
   onComplete: (result: StudioSessionCompletion) => void;
-  onBackToLobby: () => void;
+  onBackToPractice: () => void;
   onSelectFramework: (frameworkId: FrameworkId) => void;
   onRememberMode: (mode: 'camera' | 'audio') => void;
 }
@@ -75,6 +81,10 @@ function resolveScenarioForSession(
     durationSec: Math.max(45, Math.round(session.durationSec) || 60),
     stakes: 'Saved practice take from your history.',
     prompt: 'Saved practice take from your history.',
+    questions:
+      session.questionSnapshots && session.questionSnapshots.length > 0
+        ? session.questionSnapshots
+        : [],
     isCustom: session.scenarioId.startsWith('custom-'),
   };
 }
@@ -91,7 +101,7 @@ function StudioHost({
   previousTakeId,
   pinnedCue,
   onComplete,
-  onBackToLobby,
+  onBackToPractice,
   onSelectFramework,
   onRememberMode,
 }: StudioHostProps) {
@@ -126,7 +136,7 @@ function StudioHost({
       studio={studioWithModeMemory}
       takeNumber={takeNumber}
       pinnedCue={pinnedCue}
-      onBackToLobby={onBackToLobby}
+      onBackToPractice={onBackToPractice}
       onSelectFramework={onSelectFramework}
     />
   );
@@ -138,17 +148,11 @@ export function App() {
   );
   const [sessions, setSessions] = useState<SessionRecord[]>(() => loadSessions());
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadPrefs());
-  const [view, setView] = useState<AppView>('lobby');
+  const [view, setView] = useState<AppView>('practice');
 
   const [studioConfig, setStudioConfig] = useState<ActiveStudioConfig | null>(null);
   const [reviewSession, setReviewSession] = useState<SessionRecord | null>(null);
   const [reviewRecording, setReviewRecording] = useState<LiveRecordingAsset | null>(null);
-
-  const [frameworksOpen, setFrameworksOpen] = useState(false);
-  const [highlightedFrameworkId, setHighlightedFrameworkId] =
-    useState<FrameworkId | null>(null);
-  const [journalOpen, setJournalOpen] = useState(false);
-  const [scenarioModalOpen, setScenarioModalOpen] = useState(false);
   const [editingScenario, setEditingScenario] = useState<Scenario | null>(null);
 
   const mountNonceRef = useRef(0);
@@ -205,9 +209,6 @@ export function App() {
       pinnedCue?: OneChangeCue | null;
     }) => {
       mountNonceRef.current += 1;
-      setFrameworksOpen(false);
-      setJournalOpen(false);
-      setScenarioModalOpen(false);
       setEditingScenario(null);
       setStudioConfig({
         scenario: params.scenario,
@@ -223,9 +224,27 @@ export function App() {
     [prefs.preferredMode]
   );
 
+  const handleNavigate = useCallback((target: 'practice' | 'create' | 'progress') => {
+    setStudioConfig(null);
+    if (target !== 'create') {
+      setEditingScenario(null);
+    } else {
+      setEditingScenario(null);
+    }
+    setView(target);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
+  const handleBackToPractice = useCallback(() => {
+    setStudioConfig(null);
+    setEditingScenario(null);
+    setView('practice');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
   const handleStartScenario = useCallback(
-    (scenario: Scenario) => {
-      launchStudio({ scenario });
+    (scenario: Scenario, frameworkOverride?: FrameworkId) => {
+      launchStudio({ scenario, frameworkId: frameworkOverride });
     },
     [launchStudio]
   );
@@ -237,60 +256,40 @@ export function App() {
     [updatePrefs]
   );
 
-  const handleGoHome = useCallback(() => {
-    setFrameworksOpen(false);
-    setJournalOpen(false);
+  const handleGoToCreate = useCallback(() => {
     setStudioConfig(null);
-    setView('lobby');
-  }, []);
-
-  const handleOpenFrameworks = useCallback((highlightId?: FrameworkId) => {
-    setJournalOpen(false);
-    setHighlightedFrameworkId(highlightId ?? null);
-    setFrameworksOpen(true);
-  }, []);
-
-  const handleOpenJournal = useCallback(() => {
-    setFrameworksOpen(false);
-    setJournalOpen(true);
-  }, []);
-
-  const handleOpenCreateScenario = useCallback(() => {
-    setFrameworksOpen(false);
-    setJournalOpen(false);
     setEditingScenario(null);
-    setScenarioModalOpen(true);
+    setView('create');
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
-  const handleOpenEditScenario = useCallback((scenario: Scenario) => {
+  const handleEditScenario = useCallback((scenario: Scenario) => {
+    setStudioConfig(null);
     setEditingScenario(scenario);
-    setScenarioModalOpen(true);
+    setView('create');
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
   const handleSaveCustomScenario = useCallback(
     (scenario: Scenario, startImmediately: boolean) => {
       const updated = saveCustomScenario(scenario);
       setCustomScenarios(updated);
-      setScenarioModalOpen(false);
       setEditingScenario(null);
       if (startImmediately) {
         launchStudio({ scenario });
+      } else {
+        updatePrefs({ lastLensFilter: 'custom' });
+        setView('practice');
+        window.scrollTo({ top: 0, behavior: 'auto' });
       }
     },
-    [launchStudio]
+    [launchStudio, updatePrefs]
   );
 
   const handleDeleteCustomScenario = useCallback((scenarioId: string) => {
     const updated = deleteCustomScenario(scenarioId);
     setCustomScenarios(updated);
   }, []);
-
-  const handlePracticeFramework = useCallback(
-    (frameworkId: FrameworkId, matchingScenario: Scenario) => {
-      launchStudio({ scenario: matchingScenario, frameworkId });
-    },
-    [launchStudio]
-  );
 
   const handleSelectStudioFramework = useCallback((frameworkId: FrameworkId) => {
     setStudioConfig((prev) => (prev ? { ...prev, frameworkId } : prev));
@@ -311,6 +310,7 @@ export function App() {
       setReviewSession(record);
       setStudioConfig(null);
       setView('review');
+      window.scrollTo({ top: 0, behavior: 'auto' });
     },
     [replaceReviewRecording]
   );
@@ -339,25 +339,25 @@ export function App() {
     []
   );
 
-  const handleSelectJournalSession = useCallback(
+  const handleSelectHistorySession = useCallback(
     (session: SessionRecord) => {
-      setJournalOpen(false);
       setStudioConfig(null);
       replaceReviewRecording(null);
       setReviewSession(session);
       setView('review');
+      window.scrollTo({ top: 0, behavior: 'auto' });
     },
     [replaceReviewRecording]
   );
 
-  const handleDeleteJournalSession = useCallback(
+  const handleDeleteHistorySession = useCallback(
     (sessionId: string) => {
       const updated = deleteSession(sessionId);
       setSessions(updated);
       if (reviewSession?.id === sessionId) {
         replaceReviewRecording(null);
         setReviewSession(null);
-        setView('lobby');
+        setView('progress');
       }
     },
     [reviewSession, replaceReviewRecording]
@@ -378,6 +378,11 @@ export function App() {
     return getFrameworkById(reviewSession.frameworkId);
   }, [reviewSession]);
 
+  const reviewCoachReport = useMemo(() => {
+    if (!reviewSession) return null;
+    return ensureCoachReport(reviewSession);
+  }, [reviewSession]);
+
   const reviewTakeDelta = useMemo(() => {
     if (!reviewSession?.previousTakeId) return null;
     const previous = sessions.find((s) => s.id === reviewSession.previousTakeId);
@@ -388,16 +393,10 @@ export function App() {
   return (
     <>
       {view !== 'studio' && (
-        <TopBar
-          currentView={view}
-          streak={streak}
-          onGoHome={handleGoHome}
-          onOpenFrameworks={() => handleOpenFrameworks()}
-          onOpenJournal={handleOpenJournal}
-        />
+        <TopBar currentView={view} streak={streak} onNavigate={handleNavigate} />
       )}
 
-      {view === 'lobby' && (
+      {view === 'practice' && (
         <LobbyView
           scenarios={allScenarios}
           frameworks={FRAMEWORKS}
@@ -407,9 +406,33 @@ export function App() {
           practicedScenarioIds={streak.practicedScenarioIds}
           onLensFilterChange={handleLensFilterChange}
           onStartScenario={handleStartScenario}
-          onCreateScenario={handleOpenCreateScenario}
-          onEditScenario={handleOpenEditScenario}
+          onGoToCreate={handleGoToCreate}
+          onEditScenario={handleEditScenario}
           onDeleteScenario={handleDeleteCustomScenario}
+        />
+      )}
+
+      {view === 'create' && (
+        <CreateScenarioView
+          frameworks={FRAMEWORKS}
+          templates={SCENARIO_TEMPLATES}
+          questionSuggestions={QUESTION_SUGGESTIONS}
+          editingScenario={editingScenario}
+          onSave={handleSaveCustomScenario}
+          onCancelEdit={handleBackToPractice}
+        />
+      )}
+
+      {view === 'progress' && (
+        <ProgressView
+          sessions={sessions}
+          scenarios={allScenarios}
+          frameworks={FRAMEWORKS}
+          streak={streak}
+          getCoachReport={ensureCoachReport}
+          onSelectSession={handleSelectHistorySession}
+          onDeleteSession={handleDeleteHistorySession}
+          onStartFirstRep={() => handleStartScenario(todaysScenario)}
         />
       )}
 
@@ -423,57 +446,31 @@ export function App() {
           previousTakeId={studioConfig.previousTakeId}
           pinnedCue={studioConfig.pinnedCue}
           onComplete={handleStudioComplete}
-          onBackToLobby={handleGoHome}
+          onBackToPractice={handleBackToPractice}
           onSelectFramework={handleSelectStudioFramework}
           onRememberMode={handleRememberMode}
         />
       )}
 
-      {view === 'review' && reviewSession && reviewScenario && reviewFramework && (
-        <ReviewView
-          session={reviewSession}
-          recording={reviewRecording}
-          scenario={reviewScenario}
-          framework={reviewFramework}
-          lensMeta={LENS_META[reviewScenario.lens]}
-          takeDelta={reviewTakeDelta}
-          onTakeTwo={handleTakeTwo}
-          onNewScenario={handleGoHome}
-          onSaveReflection={handleSaveReflection}
-        />
-      )}
-
-      <ScenarioModal
-        isOpen={scenarioModalOpen}
-        frameworks={FRAMEWORKS}
-        initialScenario={editingScenario}
-        onClose={() => {
-          setScenarioModalOpen(false);
-          setEditingScenario(null);
-        }}
-        onSave={handleSaveCustomScenario}
-      />
-
-      <FrameworksDrawer
-        isOpen={frameworksOpen}
-        frameworks={FRAMEWORKS}
-        scenarios={allScenarios}
-        lensMeta={LENS_META}
-        highlightFrameworkId={highlightedFrameworkId}
-        onClose={() => setFrameworksOpen(false)}
-        onPracticeFramework={handlePracticeFramework}
-      />
-
-      <JournalDrawer
-        isOpen={journalOpen}
-        sessions={sessions}
-        scenarios={allScenarios}
-        frameworks={FRAMEWORKS}
-        streak={streak}
-        onClose={() => setJournalOpen(false)}
-        onSelectSession={handleSelectJournalSession}
-        onDeleteSession={handleDeleteJournalSession}
-      />
+      {view === 'review' &&
+        reviewSession &&
+        reviewScenario &&
+        reviewFramework &&
+        reviewCoachReport && (
+          <ReviewView
+            session={reviewSession}
+            coachReport={reviewCoachReport}
+            recording={reviewRecording}
+            scenario={reviewScenario}
+            framework={reviewFramework}
+            lensMeta={LENS_META[reviewScenario.lens]}
+            takeDelta={reviewTakeDelta}
+            annotateText={annotateTranscriptText}
+            onTakeTwo={handleTakeTwo}
+            onBackToPractice={handleBackToPractice}
+            onSaveReflection={handleSaveReflection}
+          />
+        )}
     </>
   );
 }

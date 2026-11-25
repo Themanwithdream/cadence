@@ -512,6 +512,11 @@ export function computeTakeDelta(
   current: SessionRecord,
   previous: SessionRecord,
 ): TakeDelta {
+  const scoreDiff =
+    current.coachReport && previous.coachReport
+      ? current.coachReport.overallScore - previous.coachReport.overallScore
+      : null;
+
   const wpmDiff =
     current.metrics.wpm !== null && previous.metrics.wpm !== null
       ? current.metrics.wpm - previous.metrics.wpm
@@ -540,10 +545,18 @@ export function computeTakeDelta(
   const wins: string[] = [];
   const notes: string[] = [];
 
+  if (scoreDiff !== null) {
+    if (scoreDiff > 0) {
+      wins.push(`+${scoreDiff} pts`);
+    } else if (scoreDiff <= -4) {
+      notes.push(`${scoreDiff} pts`);
+    }
+  }
+
   if (beatsHitDiff > 0) {
-    wins.push(`+${beatsHitDiff} more ${beatsHitDiff === 1 ? 'beat' : 'beats'} landed`);
+    wins.push(`+${beatsHitDiff} more ${beatsHitDiff === 1 ? 'question' : 'questions'} landed`);
   } else if (beatsHitDiff < 0) {
-    notes.push(`${Math.abs(beatsHitDiff)} fewer ${Math.abs(beatsHitDiff) === 1 ? 'beat' : 'beats'}`);
+    notes.push(`${Math.abs(beatsHitDiff)} fewer ${Math.abs(beatsHitDiff) === 1 ? 'question' : 'questions'}`);
   }
 
   if (powerPauseDiff > 0) {
@@ -591,6 +604,7 @@ export function computeTakeDelta(
   return {
     previousSessionId: previous.id,
     previousTakeNumber: previous.takeNumber,
+    scoreDiff,
     wpmDiff,
     powerPauseDiff,
     fillerPerMinDiff,

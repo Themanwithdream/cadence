@@ -2,17 +2,17 @@
   height: 100dvh;
   max-height: 100dvh;
   width: 100%;
-  max-width: 1180px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 14px 20px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 11px;
   overflow: hidden;
 }
 
 /* =========================================================================
-   Slim Studio Header (4 Essentials Only)
+   Slim Studio Header (4 Essentials)
    ========================================================================= */
 .studioHeader {
   display: flex;
@@ -296,7 +296,7 @@
 .stageViewport {
   position: relative;
   flex: 1 1 auto;
-  min-height: 260px;
+  min-height: 250px;
   border-radius: var(--radius-xl);
   background: var(--bg-stage);
   border: 1px solid rgba(28, 26, 23, 0.16);
@@ -326,7 +326,7 @@
     linear-gradient(180deg, rgba(26, 25, 23, 0.56) 0%, rgba(26, 25, 23, 0.05) 34%, rgba(26, 25, 23, 0.08) 72%, rgba(26, 25, 23, 0.5) 100%);
 }
 
-/* Atmospheric Audio / Timer Acoustic Backdrop */
+/* Atmospheric Audio / Timer Backdrop */
 .acousticBackdrop {
   position: absolute;
   inset: 0;
@@ -446,7 +446,7 @@
 }
 
 /* =========================================================================
-   Top-Weighted EyeLineBeacon + Floating Beat Teleprompter
+   Top-Weighted EyeLineBeacon + Anchored Question Cue Card
    ========================================================================= */
 .lensCluster {
   position: relative;
@@ -464,9 +464,9 @@
   pointer-events: auto;
 }
 
-.beatTeleprompter {
-  width: min(560px, 100%);
-  padding: 14px 18px 13px;
+.questionCueCard {
+  width: min(600px, 100%);
+  padding: 12px 18px 14px;
   border-radius: var(--radius-lg);
   background: var(--bg-stage-panel);
   border: 1px solid var(--border-on-stage);
@@ -476,10 +476,10 @@
     0 12px 32px rgba(0, 0, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color: var(--ink-on-stage);
-  animation: beatReveal var(--duration-base) var(--ease-studio);
+  animation: cueReveal var(--duration-base) var(--ease-studio);
 }
 
-@keyframes beatReveal {
+@keyframes cueReveal {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -490,94 +490,135 @@
   }
 }
 
-.beatHeader {
+/* Segmented Progress Bar */
+.segmentedBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.segmentTrack {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(246, 243, 236, 0.16);
+  transition:
+    background-color var(--duration-base) var(--ease-studio),
+    transform var(--duration-fast) var(--ease-studio);
+}
+
+.segmentTrack:hover {
+  background: rgba(246, 243, 236, 0.36);
+}
+
+.segmentCompleted {
+  background: #6eb397;
+}
+
+.segmentActive {
+  background: var(--accent-terracotta);
+  box-shadow: 0 0 10px rgba(200, 85, 61, 0.55);
+}
+
+.questionHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 }
 
-.beatLabelRow {
+.questionCounterRow {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
 }
 
-.beatCounter {
+.questionCounter {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #f2a28f;
+  color: #f3a492;
 }
 
-.beatSep {
-  color: rgba(246, 243, 236, 0.3);
-}
-
-.beatName {
-  font-size: 0.78rem;
+.completedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(94, 155, 130, 0.24);
+  font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(246, 243, 236, 0.94);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #b5e2ce;
 }
 
-.beatSecHint {
+.secHintPill {
   font-size: 0.69rem;
-  color: rgba(246, 243, 236, 0.52);
+  color: rgba(246, 243, 236, 0.55);
   padding: 1px 6px;
   border-radius: var(--radius-pill);
   background: rgba(246, 243, 236, 0.08);
 }
 
-.beatDots {
+.stepDots {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
-.beatDotBtn {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  background: rgba(246, 243, 236, 0.24);
+.stepDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(246, 243, 236, 0.1);
+  border: 1px solid rgba(246, 243, 236, 0.16);
+  color: rgba(246, 243, 236, 0.62);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition:
-    width var(--duration-base) var(--ease-studio),
-    background-color var(--duration-base) var(--ease-studio);
+    background-color var(--duration-fast) var(--ease-studio),
+    border-color var(--duration-fast) var(--ease-studio),
+    color var(--duration-fast) var(--ease-studio);
 }
 
-.beatDotBtn:hover {
-  background: rgba(246, 243, 236, 0.56);
+.stepDot:hover {
+  background: rgba(246, 243, 236, 0.22);
+  color: #ffffff;
 }
 
-.beatDotVisited {
-  background: rgba(143, 210, 181, 0.72);
+.stepDotCompleted {
+  background: rgba(94, 155, 130, 0.34);
+  border-color: rgba(143, 210, 181, 0.65);
+  color: #cdeee0;
 }
 
-.beatDotActive {
-  width: 22px;
+.stepDotActive {
   background: var(--accent-terracotta);
+  border-color: #e67a63;
+  color: #ffffff;
 }
 
-.beatPrompt {
+.questionText {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.24rem;
   font-weight: 400;
-  line-height: 1.38;
+  line-height: 1.32;
   color: #fdfbf7;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
-.beatFooter {
-  margin-top: 8px;
+.questionFooter {
+  margin-top: 9px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -585,23 +626,19 @@
   gap: 8px;
 }
 
-.starterCue {
+.questionHint {
   font-size: 0.78rem;
   font-style: italic;
-  color: rgba(246, 243, 236, 0.7);
+  color: rgba(246, 243, 236, 0.72);
 }
 
-.starterCueLabel {
-  font-style: normal;
-  font-weight: 600;
-  color: rgba(246, 243, 236, 0.5);
-  margin-right: 4px;
-}
-
-.outlineKeywordPill {
+.keywordCuePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 2px 9px;
   border-radius: var(--radius-pill);
-  background: rgba(217, 160, 74, 0.2);
+  background: rgba(217, 160, 74, 0.22);
   border: 1px solid rgba(217, 160, 74, 0.45);
   font-size: 0.74rem;
   font-weight: 600;
@@ -612,7 +649,7 @@
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 0.67rem;
-  color: rgba(246, 243, 236, 0.52);
+  color: rgba(246, 243, 236, 0.54);
 }
 
 /* =========================================================================
@@ -750,7 +787,7 @@
 }
 
 .counterpartCard {
-  width: min(560px, 100%);
+  width: min(600px, 100%);
   padding: 12px 16px;
   border-radius: var(--radius-lg);
   background: rgba(31, 27, 22, 0.86);
@@ -766,7 +803,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .counterpartRole {
@@ -789,9 +826,9 @@
 .counterpartQuote {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 0.98rem;
+  font-size: 0.96rem;
   font-style: italic;
-  line-height: 1.42;
+  line-height: 1.4;
   color: #faf6ef;
 }
 
@@ -852,7 +889,7 @@
 }
 
 /* =========================================================================
-   Calm Acoustic Ribbon Strip (Zen by Default)
+   Acoustic Ribbon Strip
    ========================================================================= */
 .ribbonStrip {
   flex-shrink: 0;
@@ -860,7 +897,7 @@
 }
 
 /* =========================================================================
-   Prep & Transport Dock
+   Reorganized Prep & Live Transport Dock
    ========================================================================= */
 .transportDock {
   padding: 12px 16px;
@@ -873,113 +910,133 @@
 
 .prepDockLayout {
   display: grid;
-  grid-template-columns: minmax(210px, 0.9fr) minmax(430px, 1.85fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
 }
 
-.prepContext {
+.talkingPointsArea {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 7px;
   min-width: 0;
 }
 
-.prepEyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.64rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.prepStakes {
-  font-size: 0.82rem;
-  line-height: 1.42;
-  color: var(--ink-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Quick Outline */
-.quickOutline {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.quickOutlineHeader {
+.talkingPointsHeader {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
 }
 
-.quickOutlineTitle {
-  font-size: 0.72rem;
+.talkingPointsTitle {
+  font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-primary);
+  flex-shrink: 0;
 }
 
-.quickOutlineSub {
-  font-size: 0.7rem;
+.talkingPointsSub {
+  font-size: 0.72rem;
   color: var(--ink-muted);
+  flex-shrink: 0;
 }
 
-.outlineInputs {
+.talkingPointsStakes {
+  font-size: 0.74rem;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.talkingPointsGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 8px;
 }
 
-.outlinePillField {
+.talkingPointsScroll {
+  display: flex;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.talkingPointsScroll .talkingPointField {
+  flex: 0 0 186px;
+}
+
+.talkingPointField {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 5px 10px;
+  gap: 4px;
+  padding: 7px 10px;
   border-radius: var(--radius-md);
   background: var(--bg-canvas);
   border: 1px solid var(--border-subtle);
+  min-width: 0;
   transition:
     border-color var(--duration-fast) var(--ease-studio),
     background-color var(--duration-fast) var(--ease-studio);
 }
 
-.outlinePillField:focus-within {
+.talkingPointFieldFocused {
+  border-color: var(--border-strong);
+}
+
+.talkingPointField:focus-within {
   background: var(--bg-elevated);
   border-color: var(--accent-terracotta);
 }
 
-.outlineSlotTag {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 500;
-  color: var(--ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.talkingPointTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
-.outlineInput {
+.talkingPointBadge {
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-muted);
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  flex-shrink: 0;
+}
+
+.talkingPointLabel {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.talkingPointInput {
   border: none;
   background: transparent;
   width: 100%;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--ink-primary);
   outline: none;
 }
 
-.outlineInput::placeholder {
+.talkingPointInput::placeholder {
   color: var(--ink-muted);
 }
 
 .prepCtaWrap {
   display: flex;
   justify-content: flex-end;
+  align-self: stretch;
+  align-items: center;
 }
 
 /* Transport Buttons */
@@ -988,11 +1045,11 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  padding: 12px 22px;
+  padding: 13px 24px;
   border-radius: var(--radius-pill);
   background: var(--accent-terracotta);
   color: var(--ink-on-accent);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -1097,7 +1154,7 @@
     top: auto;
     right: auto;
     margin: 10px auto 0;
-    width: min(560px, calc(100% - 32px));
+    width: min(600px, calc(100% - 32px));
     max-width: none;
   }
 }
@@ -1134,7 +1191,7 @@
 }
 
 @media (max-width: 640px) {
-  .outlineInputs {
+  .talkingPointsGrid {
     grid-template-columns: 1fr;
   }
 

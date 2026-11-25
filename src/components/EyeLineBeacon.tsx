@@ -8,7 +8,7 @@ export interface EyeLineBeaconProps {
   inPowerPause: boolean;
   inDynamicSilence: boolean;
   lastPauseBloomAt: number | null;
-  /** Optional anchor text; defaults to "Look here · Lens" */
+  /** Optional anchor text; defaults to "Look at camera lens" */
   label?: string;
 }
 
@@ -20,7 +20,7 @@ export function EyeLineBeacon({
   inPowerPause,
   inDynamicSilence,
   lastPauseBloomAt,
-  label = 'Look here · Lens',
+  label = 'Look at camera lens',
 }: EyeLineBeaconProps) {
   const [recentBloomKind, setRecentBloomKind] = useState<PauseKind | null>(null);
 

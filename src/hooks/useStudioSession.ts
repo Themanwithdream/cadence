@@ -4,10 +4,12 @@ import type {
   BeatTransition,
   EnergyBucket,
   FillerEvent,
+  Framework,
   LiveRecordingAsset,
   MediaErrorInfo,
   MediaPermissionStatus,
   PauseEvent,
+  Scenario,
   SessionRecord,
   StudioMode,
   StudioPhase,
@@ -31,6 +33,7 @@ import {
   evaluateSessionMetrics,
   pickOneChangeCue,
 } from '../engine/metricsEvaluator';
+import { buildCoachReport } from '../engine/speechCoach';
 import {
   SpeechTracker,
   isSpeechRecognitionSupported,
@@ -42,13 +45,39 @@ import {
 
 const COUNTDOWN_STEP_MS = 850;
 const ELAPSED_TICK_MS = 100;
-const INITIAL_OUTLINE_NOTES: [string, string, string] = ['', '', ''];
+const MAX_OUTLINE_SLOTS = 6;
 
 function createSessionId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `cadence-${crypto.randomUUID()}`;
   }
   return `cadence-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function getStepsCount(scenario: Scenario, framework: Framework): number {
+  const count =
+    scenario.questions && scenario.questions.length > 0
+      ? scenario.questions.length
+      : framework.beats.length;
+  return Math.max(1, count);
+}
+
+function getStepId(scenario: Scenario, framework: Framework, index: number): string {
+  return (
+    scenario.questions?.[index]?.id ??
+    framework.beats[index]?.id ??
+    `step-${index}`
+  );
+}
+
+function createEmptyOutlineNotes(count: number): string[] {
+  const size = Math.min(MAX_OUTLINE_SLOTS, Math.max(1, count));
+  return Array.from({ length: size }, () => '');
+}
+
+function resizeOutlineNotes(current: string[], count: number): string[] {
+  const size = Math.min(MAX_OUTLINE_SLOTS, Math.max(1, count));
+  return Array.from({ length: size }, (_, idx) => current[idx] ?? '');
 }
 
 function hasLiveTracks(stream: MediaStream | null, mode: StudioMode): boolean {
@@ -85,6 +114,7 @@ export function useStudioSession(
   } = options;
 
   const browserSpeechSupported = isSpeechRecognitionSupported();
+  const stepsCount = getStepsCount(scenario, framework);
 
   // Mode & phase state
   const [mode, setModeState] = useState<StudioMode>(initialMode);
@@ -99,12 +129,12 @@ export function useStudioSession(
   const [mediaError, setMediaError] = useState<MediaErrorInfo | null>(null);
   const [mediaStream, setMediaStreamState] = useState<MediaStream | null>(null);
 
-  // Structure state
+  // Structure state (aligned to scenario.questions when present, else framework.beats)
   const [activeBeatIndex, setActiveBeatIndex] = useState<number>(0);
   const [beatTransitions, setBeatTransitions] = useState<BeatTransition[]>([]);
-  const [outlineNotes, setOutlineNotes] = useState<string[]>([
-    ...INITIAL_OUTLINE_NOTES,
-  ]);
+  const [outlineNotes, setOutlineNotes] = useState<string[]>(() =>
+    createEmptyOutlineNotes(stepsCount),
+  );
 
   // Live acoustic & speech telemetry
   const [acousticFrame, setAcousticFrame] = useState<AcousticFrame>(() =>
@@ -149,7 +179,7 @@ export function useStudioSession(
 
   const activeBeatIndexRef = useRef<number>(0);
   const beatTransitionsRef = useRef<BeatTransition[]>([]);
-  const outlineNotesRef = useRef<string[]>([...INITIAL_OUTLINE_NOTES]);
+  const outlineNotesRef = useRef<string[]>(createEmptyOutlineNotes(stepsCount));
 
   const pausesRef = useRef<PauseEvent[]>([]);
   const fillersRef = useRef<FillerEvent[]>([]);
@@ -225,10 +255,11 @@ export function useStudioSession(
   }, []);
 
   const recordBeatTransition = useCallback((nextIndex: number, offsetMs: number) => {
-    const beats = frameworkRef.current.beats;
-    if (beats.length === 0) return;
+    const currentScenario = scenarioRef.current;
+    const currentFramework = frameworkRef.current;
+    const totalSteps = getStepsCount(currentScenario, currentFramework);
 
-    const clamped = Math.min(beats.length - 1, Math.max(0, nextIndex));
+    const clamped = Math.min(totalSteps - 1, Math.max(0, nextIndex));
     if (clamped === activeBeatIndexRef.current && beatTransitionsRef.current.length > 0) {
       return;
     }
@@ -252,7 +283,7 @@ export function useStudioSession(
 
     updated.push({
       beatIndex: clamped,
-      beatId: beats[clamped]?.id ?? `beat-${clamped}`,
+      beatId: getStepId(currentScenario, currentFramework, clamped),
       enteredAtMs: safeOffset,
     });
 
@@ -363,6 +394,7 @@ export function useStudioSession(
     const currentMode = modeRef.current;
     const currentScenario = scenarioRef.current;
     const currentFramework = frameworkRef.current;
+    const totalSteps = getStepsCount(currentScenario, currentFramework);
 
     clearCountdownTimers();
     clearElapsedTimer();
@@ -395,16 +427,16 @@ export function useStudioSession(
         recording = createEmptyRecordingAsset();
       }
 
-      // Release camera & microphone cleanly as user moves to Mirror Review
+      // Release camera & microphone cleanly as user moves to Review
       stopHardwareCapture();
     }
 
-    // Close the final beat transition timestamp
-    const firstBeatId = currentFramework.beats[0]?.id ?? 'beat-0';
+    // Close the final step/question transition timestamp
+    const firstStepId = getStepId(currentScenario, currentFramework, 0);
     const rawTransitions =
       beatTransitionsRef.current.length > 0
         ? beatTransitionsRef.current
-        : [{ beatIndex: 0, beatId: firstBeatId, enteredAtMs: 0 }];
+        : [{ beatIndex: 0, beatId: firstStepId, enteredAtMs: 0 }];
 
     const closedTransitions: BeatTransition[] = rawTransitions.map((entry, idx) =>
       idx === rawTransitions.length - 1
@@ -433,10 +465,25 @@ export function useStudioSession(
       fillers: fillersRef.current,
       energyTimeline: energyBucketsRef.current,
       beatTransitions: closedTransitions,
-      totalBeats: Math.max(1, currentFramework.beats.length),
+      totalBeats: totalSteps,
     });
 
     const oneChangeCue = pickOneChangeCue(metrics, currentScenario.lens);
+    const coachReport = buildCoachReport({
+      lens: currentScenario.lens,
+      mode: currentMode,
+      metrics,
+      transcript,
+      transcriptChunks: chunks,
+      pauses: pausesRef.current,
+      fillers: fillersRef.current,
+      questionsCount: totalSteps,
+    });
+
+    const questionSnapshots =
+      currentScenario.questions && currentScenario.questions.length > 0
+        ? currentScenario.questions.map((q) => ({ ...q }))
+        : undefined;
 
     const record: SessionRecord = {
       id: createSessionId(),
@@ -458,6 +505,8 @@ export function useStudioSession(
       outlineNotes: [...outlineNotesRef.current],
       oneChangeCue,
       reflectionNote: '',
+      coachReport,
+      questionSnapshots,
     };
 
     phaseRef.current = 'prep';
@@ -482,6 +531,7 @@ export function useStudioSession(
     if (!mountedRef.current) return;
 
     const currentMode = modeRef.current;
+    const currentScenario = scenarioRef.current;
     const currentFramework = frameworkRef.current;
 
     const startPerfMs = performance.now();
@@ -495,7 +545,7 @@ export function useStudioSession(
 
     const initialTransition: BeatTransition = {
       beatIndex: 0,
-      beatId: currentFramework.beats[0]?.id ?? 'beat-0',
+      beatId: getStepId(currentScenario, currentFramework, 0),
       enteredAtMs: 0,
     };
     activeBeatIndexRef.current = 0;
@@ -646,13 +696,16 @@ export function useStudioSession(
   );
 
   const advanceBeat = useCallback(() => {
-    const maxIndex = Math.max(0, frameworkRef.current.beats.length - 1);
+    const maxIndex = Math.max(
+      0,
+      getStepsCount(scenarioRef.current, frameworkRef.current) - 1,
+    );
     const nextIndex = Math.min(maxIndex, activeBeatIndexRef.current + 1);
     goToBeat(nextIndex);
   }, [goToBeat]);
 
   const setOutlineNote = useCallback((slotIndex: number, value: string) => {
-    if (slotIndex < 0) return;
+    if (slotIndex < 0 || slotIndex >= MAX_OUTLINE_SLOTS) return;
     const next = [...outlineNotesRef.current];
     while (next.length <= slotIndex) {
       next.push('');
@@ -693,11 +746,29 @@ export function useStudioSession(
   useEffect(() => {
     if (prevScenarioIdRef.current !== scenario.id) {
       prevScenarioIdRef.current = scenario.id;
-      outlineNotesRef.current = [...INITIAL_OUTLINE_NOTES];
-      setOutlineNotes([...INITIAL_OUTLINE_NOTES]);
+      const freshNotes = createEmptyOutlineNotes(
+        getStepsCount(scenarioRef.current, frameworkRef.current),
+      );
+      outlineNotesRef.current = freshNotes;
+      setOutlineNotes(freshNotes);
       restartPrep();
     }
   }, [restartPrep, scenario.id]);
+
+  // Keep outlineNotes length aligned with stepsCount (up to 6) without losing typed notes
+  useEffect(() => {
+    const targetLen = Math.min(MAX_OUTLINE_SLOTS, Math.max(1, stepsCount));
+    if (outlineNotesRef.current.length !== targetLen) {
+      const resized = resizeOutlineNotes(outlineNotesRef.current, targetLen);
+      outlineNotesRef.current = resized;
+      setOutlineNotes(resized);
+    }
+    if (activeBeatIndexRef.current >= stepsCount) {
+      const clamped = Math.max(0, stepsCount - 1);
+      activeBeatIndexRef.current = clamped;
+      setActiveBeatIndex(clamped);
+    }
+  }, [stepsCount]);
 
   // Reset activeBeatIndex cleanly when swapping frameworks in prep (and clamp defensively otherwise)
   useEffect(() => {
@@ -709,18 +780,18 @@ export function useStudioSession(
         setActiveBeatIndex(0);
         setBeatTransitions([]);
       } else {
-        const maxIndex = Math.max(0, framework.beats.length - 1);
+        const maxIndex = Math.max(0, stepsCount - 1);
         if (activeBeatIndexRef.current > maxIndex) {
           activeBeatIndexRef.current = maxIndex;
           setActiveBeatIndex(maxIndex);
         }
       }
     }
-  }, [framework.beats.length, framework.id]);
+  }, [framework.id, stepsCount]);
 
   const safeActiveBeatIndex = Math.min(
     activeBeatIndex,
-    Math.max(0, framework.beats.length - 1),
+    Math.max(0, stepsCount - 1),
   );
 
   return {

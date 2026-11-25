@@ -1,8 +1,10 @@
 import type {
+  CoachReport,
   FrameworkId,
   Lens,
   LensFilter,
   Scenario,
+  ScenarioQuestion,
   SessionRecord,
   StreakSummary,
   UserPrefs,
@@ -14,6 +16,7 @@ export const CUSTOM_SCENARIOS_STORAGE_KEY = 'cadence.v1.customScenarios';
 
 const MAX_STORED_SESSIONS = 150;
 const MAX_CUSTOM_SCENARIOS = 100;
+const MAX_SCENARIO_QUESTIONS = 6;
 
 export const DEFAULT_USER_PREFS: UserPrefs = {
   preferredMode: 'camera',
@@ -96,10 +99,160 @@ export function savePrefs(prefs: UserPrefs): void {
 }
 
 // ---------------------------------------------------------------------------
-// Custom Scenarios CRUD
+// Custom Scenarios CRUD (with backward-compatible question hydration)
 // ---------------------------------------------------------------------------
 
-function isLikelyCustomScenario(value: unknown): value is Scenario {
+function normalizeQuestionList(
+  rawQuestions: unknown,
+  scenarioId: string
+): ScenarioQuestion[] {
+  if (!Array.isArray(rawQuestions)) {
+    return [];
+  }
+
+  const normalized: ScenarioQuestion[] = [];
+  for (let i = 0; i < rawQuestions.length && normalized.length < MAX_SCENARIO_QUESTIONS; i += 1) {
+    const item = rawQuestions[i];
+    if (typeof item === 'string') {
+      const text = item.trim();
+      if (text) {
+        normalized.push({ id: `${scenarioId}-q${normalized.length + 1}`, text });
+      }
+      continue;
+    }
+    if (item && typeof item === 'object') {
+      const candidate = item as Partial<ScenarioQuestion>;
+      const text = typeof candidate.text === 'string' ? candidate.text.trim() : '';
+      if (!text) {
+        continue;
+      }
+      const id =
+        typeof candidate.id === 'string' && candidate.id.trim().length > 0
+          ? candidate.id.trim()
+          : `${scenarioId}-q${normalized.length + 1}`;
+      const hint =
+        typeof candidate.hint === 'string' && candidate.hint.trim().length > 0
+          ? candidate.hint.trim()
+          : undefined;
+      normalized.push(hint ? { id, text, hint } : { id, text });
+    }
+  }
+
+  return normalized;
+}
+
+function synthesizeDefaultQuestions(
+  scenarioId: string,
+  lens: Lens,
+  stakes: string,
+  prompt: string,
+  outlineHints?: [string, string, string],
+  openingPushback?: string
+): ScenarioQuestion[] {
+  const cleanHints = Array.isArray(outlineHints)
+    ? outlineHints
+        .map((h) => (typeof h === 'string' ? h.trim() : ''))
+        .filter(Boolean)
+    : [];
+
+  if (cleanHints.length >= 3) {
+    return [
+      {
+        id: `${scenarioId}-q1`,
+        text: `How do you open clearly on ${cleanHints[0].toLowerCase()}?`,
+        hint: cleanHints[0],
+      },
+      {
+        id: `${scenarioId}-q2`,
+        text: `What core reason or evidence backs up ${cleanHints[1].toLowerCase()}?`,
+        hint: cleanHints[1],
+      },
+      {
+        id: `${scenarioId}-q3`,
+        text: `How do you land ${cleanHints[2].toLowerCase()} cleanly?`,
+        hint: cleanHints[2],
+      },
+    ];
+  }
+
+  const trimmedPrompt = prompt.trim();
+  const trimmedStakes = stakes.trim();
+
+  if (lens === 'negotiation') {
+    return [
+      {
+        id: `${scenarioId}-q1`,
+        text: openingPushback
+          ? 'How will you mirror or label their opening objection calmly?'
+          : 'How will you acknowledge their perspective and lower tension upfront?',
+        hint: 'Empathy first · Calm, curious tone',
+      },
+      {
+        id: `${scenarioId}-q2`,
+        text:
+          trimmedPrompt.length > 0 && trimmedPrompt.length <= 120
+            ? trimmedPrompt
+            : 'What objective benchmark, value, or boundary anchors your position?',
+        hint: 'Objective criteria · Steady downward tone',
+      },
+      {
+        id: `${scenarioId}-q3`,
+        text: 'What calibrated “How/What” question moves this forward — followed by silence?',
+        hint: 'Ask openly, then hold 4s of silence',
+      },
+    ];
+  }
+
+  if (lens === 'camera') {
+    return [
+      {
+        id: `${scenarioId}-q1`,
+        text: 'What sharp opening hook earns attention in the first 10 seconds?',
+        hint: 'Hold the lens · Lead with contrast or stakes',
+      },
+      {
+        id: `${scenarioId}-q2`,
+        text:
+          trimmedPrompt.length > 0 && trimmedPrompt.length <= 120
+            ? trimmedPrompt
+            : trimmedStakes.length > 0 && trimmedStakes.length <= 120
+              ? `What core insight or story addresses: ${trimmedStakes}`
+              : 'What core insight and real example make your point unforgettable?',
+        hint: 'Keep gestures relaxed and pace crisp',
+      },
+      {
+        id: `${scenarioId}-q3`,
+        text: 'What single takeaway or next step should viewers remember?',
+        hint: 'Land cleanly and hold a 2s warm pause',
+      },
+    ];
+  }
+
+  return [
+    {
+      id: `${scenarioId}-q1`,
+      text: 'What is your clear bottom-line point in one sentence?',
+      hint: 'Lead with your answer — zero warmup',
+    },
+    {
+      id: `${scenarioId}-q2`,
+      text:
+        trimmedPrompt.length > 0 && trimmedPrompt.length <= 120
+          ? trimmedPrompt
+          : 'What strongest reason and concrete example back up your stance?',
+      hint: 'Signpost clearly so listeners follow by ear',
+    },
+    {
+      id: `${scenarioId}-q3`,
+      text: 'What exact decision or next step are you leaving the room with?',
+      hint: 'Close decisively and drop your inflection',
+    },
+  ];
+}
+
+function isLikelyStoredScenario(value: unknown): value is Omit<Scenario, 'questions'> & {
+  questions?: unknown;
+} {
   if (!value || typeof value !== 'object') {
     return false;
   }
@@ -119,19 +272,37 @@ function isLikelyCustomScenario(value: unknown): value is Scenario {
 }
 
 function normalizeCustomScenario(
-  scenario: Scenario,
+  scenario: Omit<Scenario, 'questions'> & { questions?: unknown },
   fallbackCreatedAt?: string
 ): Scenario {
+  const id = scenario.id.trim();
+  const title = scenario.title.trim();
+  const stakes = scenario.stakes.trim();
+  const prompt = scenario.prompt.trim();
   const trimmedPresence = scenario.presenceCue?.trim();
   const trimmedRole = scenario.counterpartRole?.trim();
   const trimmedPushback = scenario.openingPushback?.trim();
 
+  const existingQuestions = normalizeQuestionList(scenario.questions, id);
+  const questions =
+    existingQuestions.length > 0
+      ? existingQuestions
+      : synthesizeDefaultQuestions(
+          id,
+          scenario.lens,
+          stakes,
+          prompt,
+          scenario.outlineHints,
+          trimmedPushback
+        );
+
   return {
     ...scenario,
-    id: scenario.id.trim(),
-    title: scenario.title.trim(),
-    stakes: scenario.stakes.trim(),
-    prompt: scenario.prompt.trim(),
+    id,
+    title,
+    stakes,
+    prompt,
+    questions,
     presenceCue: trimmedPresence || undefined,
     counterpartRole: trimmedRole || undefined,
     openingPushback: trimmedPushback || undefined,
@@ -182,7 +353,7 @@ export function loadCustomScenarios(): Scenario[] {
       return [];
     }
     const valid = parsed
-      .filter(isLikelyCustomScenario)
+      .filter(isLikelyStoredScenario)
       .map((item) => normalizeCustomScenario(item));
     return sortCustomScenariosNewestFirst(valid);
   } catch {
@@ -212,8 +383,23 @@ export function deleteCustomScenario(scenarioId: string): Scenario[] {
 }
 
 // ---------------------------------------------------------------------------
-// Sessions CRUD & Streak Summary
+// Sessions CRUD & Streak Summary (legacy + coach-enriched records)
 // ---------------------------------------------------------------------------
+
+function isLikelyCoachReport(value: unknown): value is CoachReport {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const report = value as Partial<CoachReport>;
+  return (
+    typeof report.overallScore === 'number' &&
+    typeof report.verdict === 'string' &&
+    Boolean(report.subscores) &&
+    typeof report.subscores === 'object' &&
+    Array.isArray(report.strengths) &&
+    Array.isArray(report.improvements)
+  );
+}
 
 function isLikelySessionRecord(value: unknown): value is SessionRecord {
   if (!value || typeof value !== 'object') {
@@ -229,6 +415,19 @@ function isLikelySessionRecord(value: unknown): value is SessionRecord {
     Boolean(rec.metrics) &&
     typeof rec.metrics === 'object'
   );
+}
+
+function normalizeSessionRecord(rec: SessionRecord): SessionRecord {
+  const normalizedSnapshots = normalizeQuestionList(
+    rec.questionSnapshots,
+    rec.scenarioId
+  );
+  return {
+    ...rec,
+    reflectionNote: typeof rec.reflectionNote === 'string' ? rec.reflectionNote : '',
+    coachReport: isLikelyCoachReport(rec.coachReport) ? rec.coachReport : undefined,
+    questionSnapshots: normalizedSnapshots.length > 0 ? normalizedSnapshots : undefined,
+  };
 }
 
 function sortSessionsNewestFirst(sessions: SessionRecord[]): SessionRecord[] {
@@ -280,10 +479,9 @@ export function loadSessions(): SessionRecord[] {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    const valid = parsed.filter(isLikelySessionRecord).map((rec) => ({
-      ...rec,
-      reflectionNote: typeof rec.reflectionNote === 'string' ? rec.reflectionNote : '',
-    }));
+    const valid = parsed
+      .filter(isLikelySessionRecord)
+      .map(normalizeSessionRecord);
     return sortSessionsNewestFirst(valid);
   } catch {
     return [];
@@ -291,8 +489,9 @@ export function loadSessions(): SessionRecord[] {
 }
 
 export function saveSession(record: SessionRecord): SessionRecord[] {
-  const existing = loadSessions().filter((item) => item.id !== record.id);
-  const updated = sortSessionsNewestFirst([record, ...existing]).slice(
+  const normalized = normalizeSessionRecord(record);
+  const existing = loadSessions().filter((item) => item.id !== normalized.id);
+  const updated = sortSessionsNewestFirst([normalized, ...existing]).slice(
     0,
     MAX_STORED_SESSIONS
   );
